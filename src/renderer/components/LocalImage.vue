@@ -1,16 +1,15 @@
 <template>
-  <img src="file:///Users/yznt/Downloads/小圆脸/下载.png" alt="">
+  <img :src="src" alt="">
 </template>
 
 <script>
-import { createImage } from '@/api/tool'
-
 export default {
   name: 'LocalImage',
-  props: {},
-  computed: {},
-  created() {
-    createImage()
-  },
+  props: {
+    src: {
+      type: String,
+      required: true
+    }
+  }
 }
 </script>

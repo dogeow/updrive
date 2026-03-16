@@ -1,30 +1,25 @@
 <template>
   <div class="list-view">
     <div class="list-view-main" ref='listView' tabindex="-1" @keydown="keydown">
-      <div class="list-operation">
-        <div class="list-operation-item" @click="isSelectedSingleFile && copyHref()" :class="{disabled: !isSelectedSingleFile}">
-          <Icon name="icon-link" />获取链接
-        </div>
-        <div class="list-operation-item" @click="selected.length && downloadFile()" :class="{disabled: !uniqueSelectedUri}">
-          <Icon name="icon-download" />下载
-        </div>
-        <div class="list-operation-item" @click="isSelectedSingleFile && dblclickItem()" :class="{disabled: !isSelectedSingleFile}">
-          <Icon name="icon-browse" />查看
-        </div>
-        <div class="list-operation-item" @click="selected.length && toggleShowDeleteModal(true)" :class="{disabled: !selected.length}">
-          <Icon name="icon-delete" />删除
-        </div>
-        <div class="list-operation-item" @click="isSelectedSingleFile && renameFile()" :class="{disabled: !isSelectedSingleFile}">
-          <Icon name="icon-edit" />重命名
-        </div>
-        <div
-          class="list-operation-item"
-          @click="isViewDetail ? toggleShowViewDetail() : getFileDetail()"
-          :class="{disabled: !selected.length, 'list-operation-item-hover': isViewDetail}"
-        >
-          <Icon name="icon-information" />详情
-        </div>
-      </div>
+      <ListOperationBar
+        :isSelectedSingleFile="isSelectedSingleFile"
+        :isSelectedSingleItem="isSelectedSingleItem"
+        :uniqueSelectedUri="uniqueSelectedUri"
+        :selectedLength="selected.length"
+        :isViewDetail="isViewDetail"
+        :isListMode="isListMode"
+        :isThumbnailMode="isThumbnailMode"
+        @create-folder="createFolder"
+        @upload-all="uploadAll"
+        @view="() => isSelectedSingleFile && dblclickItem(uniqueSelectedUri)"
+        @rename="() => isSelectedSingleItem && renameFile()"
+        @move="() => isSelectedSingleItem && moveFile()"
+        @delete="() => selected.length && toggleShowDeleteModal(true)"
+        @copy-href="() => isSelectedSingleFile && copyHref()"
+        @download="() => selected.length && downloadFile()"
+        @detail="() => isViewDetail ? toggleShowViewDetail() : getFileDetail()"
+        @set-list-view-mode="setListViewMode"
+      />
       <div
         class="list"
         :class="{'drag-over': isDragOver}"
@@ -35,143 +30,55 @@
         @dragover="dragover"
         @drop="drop"
       >
-        <div
-          class="files-list"
-          v-if="listData.length"
-        >
-          <div class="files-list-column">
-            <div class="column-file-name table-column" />
-            <div class="column-last-modified table-column" />
-            <div class="column-file-type table-column" v-if="!isViewDetail" />
-            <div class="column-file-size table-column" v-if="!isViewDetail" />
-          </div>
-          <div class="files-list-header">
-            <div class="file-info-header column-file-name" @click="sort('filename')">
-              名称
-              <svg :class="{'is-active': sortInfo.key === 'filename' && !sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-up"></use></svg>
-              <svg :class="{'is-active': sortInfo.key === 'filename' && sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-down"></use></svg>
-            </div>
-            <div class="file-info-header column-last-modified" @click="sort('lastModified')">
-              添加日期
-              <svg :class="{'is-active': sortInfo.key === 'lastModified' && !sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-up"></use></svg>
-              <svg :class="{'is-active': sortInfo.key === 'lastModified' && sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-down"></use></svg>
-            </div>
-            <div class="file-info-header column-file-type" v-if="!isViewDetail" @click="sort('filetype')">
-              类型
-              <svg :class="{'is-active': sortInfo.key === 'filetype' && !sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-up"></use></svg>
-              <svg :class="{'is-active': sortInfo.key === 'filetype' && sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-down"></use></svg>
-            </div>
-            <div class="file-info-header column-file-size" v-if="!isViewDetail" @click="sort('size')">
-              大小
-              <svg :class="{'is-active': sortInfo.key === 'size' && !sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-up"></use></svg>
-              <svg :class="{'is-active': sortInfo.key === 'size' && sortInfo.isReverse}" class="svg-icon"><use xlink:href="#icon-arrow-down"></use></svg>
-            </div>
-          </div>
-          <div class="files-list-body" v-if="!list.dirInfo.loading">
-            <div
-              class="files-list-item"
-              v-for="(file, index) in listData"
-              :key="file.uri"
-              :class="{ 'item-selected': (listItemState[file.uri] && listItemState[file.uri].selected) }"
-              :tabindex="getListTabIndex(file.uri)"
-              @click.stop="selectItem(file, $event, index)"
-              @dblclick.stop="dblclickItem(file.uri)"
-              @contextmenu.prevent="contextmenuItem(file)"
-            >
-              <div class="name file-info-item">
-                <i class="res-icon" :class="getFileIconClass(file.filename, file.folderType)"></i>{{file.filename}}
-              </div>
-              <div class="last-modified file-info-item">{{file.lastModified | timestamp}}</div>
-              <div class="mime file-info-item">{{file.filetype}}</div>
-              <div class="size file-info-item">{{(file.folderType === 'F' ? '-' : file.size) | digiUnit}}</div>
-            </div>
-          </div>
-        </div>
-        <table v-if="!listData.length && !list.dirInfo.loading" class="table empty-list-table">
-          <tbody>
-            <tr v-for="(value, index) in Array.apply(null, {length: 9})" :key="index" class="empty-list-row">
-              <div class="empty-content" v-if="index === 3">
-                <p class="has-text-weight-bold">该文件夹为空</p>
-                <p>拖动到此处即可上传文件，或<a @click="uploadFile()">点击上传</a></p>
-              </div>
-            </tr>
-          </tbody>
-        </table>
+        <FileList
+          v-if="listData.length && isListMode"
+          :listData="listData"
+          :sortInfo="sortInfo"
+          :isListMode="isListMode"
+          :isViewDetail="isViewDetail"
+          :loading="list.dirInfo.loading"
+          :listItemState="listItemState"
+          :getListTabIndex="getListTabIndex"
+          :getFileIconClass="getFileIconClass"
+          @sort="sort"
+          @select-item="selectItem"
+          @dblclick-item="dblclickItem"
+          @contextmenu-item="contextmenuItem"
+        />
+        <FileThumbnailList
+          v-if="listData.length && isThumbnailMode"
+          :listData="listData"
+          :isThumbnailMode="isThumbnailMode"
+          :loading="list.dirInfo.loading"
+          :listItemState="listItemState"
+          :getListTabIndex="getListTabIndex"
+          :isImageFile="isImageFile"
+          :getThumbnailUrl="getThumbnailUrl"
+          :getFileIconClass="getFileIconClass"
+          @select-item="selectItem"
+          @dblclick-item="dblclickItem"
+          @contextmenu-item="contextmenuItem"
+          @thumbnail-error="onThumbnailError"
+        />
+        <EmptyListState
+          v-if="!listData.length && !list.dirInfo.loading"
+          @upload-file="uploadFile"
+        />
         <spinner v-if="list.dirInfo.loading"/>
       </div>
     </div>
-    <div class="list-view-detail" v-show="isViewDetail">
-      <div class="list-view-detail-header">
-        <div>
-          <h4 :title="fileDetail.basicInfo.filename">
-            <i class="res-icon" :class="getFileIconClass(fileDetail.basicInfo.filename, fileDetail.basicInfo.folderType)"></i>
-            {{fileDetail.basicInfo.filename}}
-          </h4>
-        </div>
-        <div class="separate-line-wrap">
-          <div class="separate-line"></div>
-        </div>
-        <span class="list-view-detail-close" @click="toggleShowViewDetail()">
-          <Icon name="icon-x" />
-        </span>
-      </div>
-      <div class="list-view-detail-content" v-if="fileDetail.basicInfo.folderType !== 'B'">
-        <spinner v-if="detailLoading" />
-        <div v-if="!detailLoading">
-          <div v-if="fileDetail.fileType === 'image'" class="image-preview">
-            <img :src="getUpyunApiUrl(fileDetail.basicInfo.uri)" alt="">
-          </div>
-          <div class="list-view-detail-content-item">
-            <div class="list-view-detail-content-item-label">
-              添加日期
-            </div>
-            <div class="list-view-detail-content-item-value">
-              {{fileDetail.basicInfo.lastModified | timestamp}}
-            </div>
-          </div>
-          <div class="list-view-detail-content-item" v-if="fileDetail.basicInfo.folderType !== 'F'">
-            <div class="list-view-detail-content-item-label">
-              大小
-            </div>
-            <div class="list-view-detail-content-item-value">
-              {{(fileDetail.basicInfo.folderType === 'F' ? '-' : fileDetail.basicInfo.size) | digiUnit}}
-            </div>
-          </div>
-          <div class="list-view-detail-content-item" v-if="fileDetail.basicInfo.folderType !== 'F'">
-            <div class="list-view-detail-content-item-label">
-              链接
-            </div>
-            <div class="list-view-detail-content-item-value">
-              <div class="field has-addons" v-if="baseHref">
-                <p class="control is-expanded">
-                  <input class="input" type="text" :value="baseHref && getHref(fileDetail.basicInfo.uri)" readonly />
-                </p>
-                <p class="control"
-                  data-balloon="点击复制"
-                  data-balloon-pos="left"
-                  @click="copyHref(fileDetail.basicInfo.href)"
-                >
-                  <a class="button">
-                    <i class="icon"><Icon name="icon-copy" /></i>
-                  </a>
-                </p>
-              </div>
-              <a @click.prevent="openDomainSettingModal" v-if="!baseHref">设置加速域名</a>
-            </div>
-          </div>
-          <div class="list-view-detail-content-item" v-if="fileDetail.basicInfo.folderType !== 'F'">
-            <div class="list-view-detail-content-item-label">
-              Response Headers
-            </div>
-            <div class="list-view-detail-content-item-value head-request-info">
-              <div v-for="(value, key) in fileDetail.headerInfo" :key="key">
-                <span style="font-weight:bold">{{key}} →&nbsp;&nbsp;</span>{{value}}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <FileDetail
+      :isViewDetail="isViewDetail"
+      :fileDetail="fileDetail"
+      :detailLoading="detailLoading"
+      :baseHref="baseHref"
+      :getUpyunApiUrl="getUpyunApiUrl"
+      :getHref="getHref"
+      :getFileIconClass="getFileIconClass"
+      @close-detail="toggleShowViewDetail"
+      @copy-href="copyHref"
+      @open-domain-setting="openDomainSettingModal"
+    />
     <confirm-modal
       title="是否删除选中文件?"
       :show="showDeleteModal"
@@ -231,11 +138,17 @@ import Message from '@/api/message'
 import ConfirmModal from '@/components/ConfirmModal'
 
 import Icon from '@/components/Icon'
+import FileList from './components/FileList.vue'
+import FileThumbnailList from './components/FileThumbnailList.vue'
+import FileDetail from './components/FileDetail.vue'
+import EmptyListState from './components/EmptyListState.vue'
+import ListOperationBar from './components/ListOperationBar.vue'
 import Spinner from '@/components/Spinner'
-import { timestamp, digiUnit, isDir, getFileIconClass, listSort } from '@/api/tool'
+import { timestamp, digiUnit, isDir, getFileIconClass, listSort, getFileTypeFromName } from '@/api/tool'
 import {
   uploadFileDialog,
   uploadDirectoryDialog,
+  uploadDialog,
   downloadFileDialog,
   createContextmenu,
   showContextmenu,
@@ -249,6 +162,11 @@ export default {
     Spinner,
     Icon,
     ConfirmModal,
+    ListOperationBar,
+    FileList,
+    FileThumbnailList,
+    EmptyListState,
+    FileDetail,
   },
   data() {
     return {
@@ -257,6 +175,7 @@ export default {
       isViewDetail: false,
       isDragOver: false,
       showDeleteModal: false,
+      thumbnailFallbackMap: {},
     }
   },
   computed: {
@@ -266,8 +185,24 @@ export default {
     sortInfo() {
       return path(['profile', 'data', 'sortInfo'], this) || {}
     },
+    listViewMode() {
+      return path(['profile', 'data', 'listViewMode'], this) || 'list'
+    },
+    isThumbnailMode() {
+      return this.listViewMode === 'thumbnail'
+    },
+    isListMode() {
+      return !this.isThumbnailMode
+    },
+    thumbnailRequestWidth() {
+      const renderWidth = 200
+      return process.platform === 'darwin' ? renderWidth * 2 : renderWidth
+    },
     isSelectedSingleFile() {
       return this.uniqueSelectedUri && !isDir(this.uniqueSelectedUri)
+    },
+    isSelectedSingleItem() {
+      return !!this.uniqueSelectedUri
     },
     uniqueSelectedUri() {
       const { selected } = this
@@ -313,7 +248,34 @@ export default {
     ...mapState(['list', 'auth', 'profile']),
     ...mapGetters(['baseHref', 'getUpyunApiUrl']),
   },
+  watch: {
+    currentDirPath() {
+      this.thumbnailFallbackMap = {}
+    },
+  },
   methods: {
+    setListViewMode(mode) {
+      if (!['list', 'thumbnail'].includes(mode)) return
+      if (mode === this.listViewMode) return
+      this.$store.dispatch('SET_PROFILE_STORE', {
+        data: { listViewMode: mode },
+      })
+    },
+    isImageFile(file = {}) {
+      return getFileTypeFromName(file.filename, file.folderType) === 'image'
+    },
+    getThumbnailUrl(file = {}) {
+      const originalUrl = this.getUpyunApiUrl(file.uri)
+      if (this.thumbnailFallbackMap[file.uri]) return originalUrl
+      return `${originalUrl}!/fw/${this.thumbnailRequestWidth}`
+    },
+    onThumbnailError(file = {}) {
+      if (!file.uri || this.thumbnailFallbackMap[file.uri]) return
+      this.thumbnailFallbackMap = {
+        ...this.thumbnailFallbackMap,
+        [file.uri]: true,
+      }
+    },
     refresh() {
       this.$store.dispatch('REFRESH_LIST')
     },
@@ -407,7 +369,10 @@ export default {
         }
       }
       if (!ctrlKey && !shiftKey && key === 'Enter') {
-        this.dblclickItem(last(this.selected))
+        const uri = last(this.selected)
+        if (uri) {
+          this.dblclickItem(uri)
+        }
       }
     },
     selectItem({ uri }, $event, index) {
@@ -454,7 +419,8 @@ export default {
             click: () => this.getFileDetail(),
           },
           { hide: !this.isSelectedSingleFile, label: '获取链接', click: () => this.copyHref() },
-          { hide: !this.isSelectedSingleFile, label: '重命名', click: () => this.renameFile() },
+          { hide: !this.isSelectedSingleItem, label: '重命名', click: () => this.renameFile() },
+          { hide: !this.isSelectedSingleItem, label: '移动到...', click: () => this.moveFile() },
           { hide: !this.selected.length, label: '下载', click: () => this.downloadFile() },
           { hide: !this.selected.length, type: 'separator' },
           { hide: false, label: '刷新目录', click: () => this.refresh() },
@@ -506,11 +472,17 @@ export default {
       }
     },
     // 双击
-    dblclickItem(uri) {
+    dblclickItem: function(uri) {
+      if (!uri) {
+        return
+      }
       // 如果是文件夹,则打开目录
       if (/\/$/.test(uri)) {
-        const historyUri = this.currentDirPath
-        this.$store.dispatch({ type: 'GET_LIST_DIR_INFO', remotePath: uri, action: 0 }).then(() => this.listGetFocus())
+        console.log('Opening folder, uri:', uri, 'is folder:', /\/$/.test(uri))
+        this.$store.dispatch({ type: 'GET_LIST_DIR_INFO', remotePath: uri, action: 0 })
+          .then(() => {
+            this.listGetFocus()
+          })
       } else {
         // @TODO
         this.isViewDetail ? this.toggleShowViewDetail() : this.getFileDetail()
@@ -537,6 +509,12 @@ export default {
       this.$store.commit('RENAME_FILE_SET_OLD_PATH', this.uniqueSelectedUri)
       this.$store.commit('OPEN_RENAME_FILE_MODAL')
     },
+    // 移动到
+    moveFile() {
+      if (!this.uniqueSelectedUri) return
+      this.$store.commit('MOVE_FILE_SET_OLD_PATH', this.uniqueSelectedUri)
+      this.$store.commit('OPEN_MOVE_FILE_MODAL')
+    },
     // 新建文件夹
     createFolder() {
       return this.$store.commit('OPEN_CREATE_FOLDER_MODAL')
@@ -558,6 +536,16 @@ export default {
         return this.$store.dispatch('UPLOAD_FILES', {
           remotePath: this.currentDirPath,
           localFilePaths: folderPaths,
+        })
+      })
+    },
+    // 上传文件或文件夹（合并）
+    uploadAll() {
+      return uploadDialog().then(paths => {
+        if (!paths || !paths.length) return
+        return this.$store.dispatch('UPLOAD_FILES', {
+          remotePath: this.currentDirPath,
+          localFilePaths: paths,
         })
       })
     },

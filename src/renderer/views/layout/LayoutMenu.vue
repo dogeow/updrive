@@ -1,56 +1,22 @@
 <template>
   <aside class="menu">
-    <div class="profile" @click="toggleProfileMenu">
-      <div class="profile-name">
-        <div class="profile-name-content">{{auth.user.operatorName}}/{{auth.user.bucketName}}</div>
-        <Icon class="icon-angle-down" name="icon-angle-down" />
-      </div>
-      <div class="profile-usage">已使用 {{auth.usage | digiUnit}}</div>
-      <div v-show="isShowProfileMenu">
-        <div class="dropdown-background"></div>
-        <div>
-          <div class="dropdown-content" @click.stop="void 0">
-            <div class="dropdown-content-profile-name">{{auth.user.operatorName}}/{{auth.user.bucketName}}</div>
-            <hr class="dropdown-divider">
-            <a class="dropdown-item" @click.prevent="openDomainSetting(true)">
-              加速域名设置
-            </a>
-            <hr class="dropdown-divider">
-            <a class="dropdown-item" @click.prevent="openExternal(externalUrls.domain)">
-              云存储服务设置
-            </a>
-            <a class="dropdown-item" @click.prevent="openExternal(externalUrls.createBucket)">
-              创建云存储服务
-            </a>
-            <a class="dropdown-item" @click.prevent="openExternal(externalUrls.issues)">
-              报告一个问题
-            </a>
-            <hr class="dropdown-divider">
-            <a class="dropdown-item" @click.prevent="toggleAccount">
-              切换账号
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-    <hr class="dropdown-divider" style="margin-bottom:0;margin-top:0;">
     <ul class="menu-list">
       <li>
         <router-link :to="{name: 'main'}" :class="{'is-active': currentRouteName === 'main'}">
           <Icon name="icon-files" />
-          全部
+          文件管理
         </router-link>
       </li>
       <li>
         <router-link :to="{name: 'upload'}" :class="{'is-active': currentRouteName === 'upload'}">
           <Icon name="icon-uploads" />
-          上传<span v-show="uploadingNum" class="task-tag tag is-danger is-rounded">{{uploadingNum}}</span>
+          上传列表<span v-show="uploadingNum" class="task-tag tag is-danger is-rounded">{{uploadingNum}}</span>
         </router-link>
       </li>
       <li>
         <router-link :to="{name: 'download'}" :class="{'is-active': currentRouteName === 'download'}">
           <Icon name="icon-downloads" />
-          下载<span v-show="downloadingNum" class="task-tag tag is-danger is-rounded">{{downloadingNum}}</span>
+          下载列表<span v-show="downloadingNum" class="task-tag tag is-danger is-rounded">{{downloadingNum}}</span>
         </router-link>
       </li>
     </ul>
@@ -81,8 +47,8 @@
             <div>历史版本下载: <a @click.prevent.stop="openExternal(externalUrls.releases)">{{externalUrls.releases}}</a></div>
           </div>
           <div class="change-logs">
-            <div class="upgrade-download-tip" v-show="upgradeUrl">
-              <span class="has-text-danger">发现新版本 v{{latestRelease.version}}！</span>
+            <div class="upgrade-download-tip" v-show="upgradeUrl && latestRelease && latestRelease.version">
+              <span class="has-text-danger">发现新版本 v{{latestRelease && latestRelease.version}}！</span>
               <a @click.prevent.stop="openExternal(externalUrls.latest)">立即下载</a>
             </div>
             <div class="change-logs-content" v-show="upgradeData.length">
@@ -113,7 +79,6 @@ import { mapState, mapGetters } from 'vuex'
 import os from 'os'
 import semver from 'semver'
 
-import { digiUnit } from '@/api/tool'
 import Icon from '@/components/Icon'
 import { openExternal, getVersion, getName } from '@/api/electron.js'
 
@@ -124,7 +89,6 @@ export default {
   },
   data() {
     return {
-      isShowProfileMenu: false,
       appVersion: '',
       appName: '',
       showAboutModal: false,
@@ -143,7 +107,7 @@ export default {
     currentRouteName() {
       return this.$route.name
     },
-    ...mapState(['task', 'auth']),
+    ...mapState(['task']),
     ...mapGetters(['externalUrls']),
   },
   created() {
@@ -152,20 +116,8 @@ export default {
     this.getUpgradeInfo()
   },
   methods: {
-    openDomainSetting(value) {
-      this.$store.commit('OPEN_DOMAIN_SETTING_MODAL')
-      this.isShowProfileMenu = false
-    },
     toggleAboutmodal(value) {
       this.showAboutModal = value !== undefined ? value : !this.showAboutModal
-    },
-    toggleProfileMenu() {
-      this.isShowProfileMenu = !this.isShowProfileMenu
-    },
-    toggleAccount() {
-      this.$router.push({ name: 'login' })
-      this.$store.dispatch('LOGOUT')
-      this.isShowProfileMenu = false
     },
     openExternal(href) {
       openExternal(href)
@@ -180,21 +132,32 @@ export default {
     },
     getUpgradeInfo() {
       const platform = os.platform() === 'darwin' || os.platform() === 'win32' ? os.platform() : 'other'
-      fetch('https://raw.githubusercontent.com/aniiantt/updrive/release/upgrade.json')
-        .then(response => {
-          return response.json()
-        })
-        .then(data => {
+      fetch('https://raw.githubusercontent.com/dogeow/updrive/release/upgrade.json')
+        .then(response => response.text())
+        .then(text => {
+          let data = []
+          try {
+            data = JSON.parse(text)
+          } catch (e) {
+            console.error('upgrade.json 解析失败:', e, text)
+            this.upgradeData = []
+            this.latestRelease = null
+            this.upgradeUrl = ''
+            return
+          }
           this.upgradeData = data
           this.latestRelease = this.upgradeData[0]
-          if (semver.lt(this.appVersion, this.latestRelease.version)) {
+          if (this.latestRelease && semver.lt(this.appVersion, this.latestRelease.version)) {
             this.upgradeUrl = this.latestRelease.package_urls[platform]
           }
         })
+        .catch(err => {
+          console.error('获取 upgrade.json 失败:', err)
+          this.upgradeData = []
+          this.latestRelease = null
+          this.upgradeUrl = ''
+        })
     },
-  },
-  filters: {
-    digiUnit,
   },
 }
 </script>

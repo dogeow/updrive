@@ -1,10 +1,9 @@
-import { ipcRenderer, shell, clipboard, remote, webFrame } from 'electron'
+import { ipcRenderer, shell, clipboard, webFrame } from 'electron'
+import { app, dialog, Menu, MenuItem, BrowserWindow, getCurrentWindow } from '@electron/remote'
 
 import Router from '@/router'
 import Store from '@/store'
 import { externalUrls } from '@/api/tool'
-
-const { app, dialog, Menu, MenuItem, BrowserWindow, getCurrentWindow } = remote
 
 const currentWin = getCurrentWindow()
 
@@ -185,6 +184,22 @@ export const uploadDirectoryDialog = (option = {}) => {
         title: '选择要上传的文件夹',
         buttonLabel: '上传',
         properties: ['openDirectory', 'createDirectory', 'multiSelections', 'showHiddenFiles'],
+        ...option,
+      },
+      resolve,
+    )
+  })
+}
+
+// 上传文件或文件夹（合并）
+export const uploadDialog = (option = {}) => {
+  return new Promise((resolve, reject) => {
+    dialog.showOpenDialog(
+      currentWin,
+      {
+        title: '选择要上传的文件或文件夹',
+        buttonLabel: '上传',
+        properties: ['openFile', 'openDirectory', 'multiSelections', 'showHiddenFiles'],
         ...option,
       },
       resolve,

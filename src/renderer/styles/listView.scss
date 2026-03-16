@@ -1,3 +1,12 @@
+// 响应式隐藏操作栏文字，仅显示图标
+@media (max-width: 700px) {
+  .op-label {
+    display: none !important;
+  }
+}
+.icon-only .op-label {
+  display: none !important;
+}
 @import '~@/styles/custom.scss';
 
 @media (max-width: 1200px) {
@@ -129,12 +138,19 @@
       color: $upyunPrimaryColor;
     }
   }
+  .list-operation-view-switch {
+    margin-left: auto;
+    display: flex;
+    padding-right: 8px;
+  }
 }
 
 .list {
-  display: flex;
-  flex: 1;
-  overflow-y: scroll;
+  display: block;
+  flex: 1 1 0%;
+  min-height: 0;
+  height: 0;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
@@ -264,6 +280,72 @@
   }
 }
 
+.files-thumbnail {
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  cursor: default;
+
+  .files-thumbnail-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
+
+  .files-thumbnail-item {
+    width: 212px;
+    padding: 6px;
+    margin: 0 12px 12px 0;
+    outline: none;
+    border-radius: 2px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+
+    &:hover {
+      background: #edf4fc;
+    }
+
+    &.item-selected {
+      background: #cce8ff;
+    }
+  }
+
+  .files-thumbnail-preview {
+    width: 200px;
+    height: 200px;
+    background: #fafafa;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .files-thumbnail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  .files-thumbnail-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 64px;
+    margin-right: 0;
+    vertical-align: middle;
+  }
+
+  .files-thumbnail-name {
+    margin-top: 6px;
+    color: rgba(0, 0, 0, 0.88);
+    line-height: 20px;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .item-hover {
   background: #e5f3ff;
 }
@@ -282,4 +364,11 @@
     justify-content: center;
     text-align: center;
   }
+}
+
+// 彻底修复 flex 列表滚动在 dev/热更新下失效
+.list-view,
+.list-view-main,
+.list {
+  min-height: 0 !important;
 }

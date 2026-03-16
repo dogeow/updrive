@@ -8,6 +8,10 @@ const initState = {
     show: false,
     oldPath: '',
   },
+  moveFile: {
+    show: false,
+    oldPath: '',
+  },
   domainSetting: {
     show: false,
   },
@@ -58,6 +62,18 @@ const mutations = {
   },
   [Types.RENAME_FILE_CLEAR_OLD_PATH](state) {
     state.renameFile.oldPath = ''
+  },
+  [Types.OPEN_MOVE_FILE_MODAL](state) {
+    state.moveFile.show = true
+  },
+  [Types.CLOSE_MOVE_FILE_MODAL](state) {
+    state.moveFile.show = false
+  },
+  [Types.MOVE_FILE_SET_OLD_PATH](state, oldPath) {
+    state.moveFile.oldPath = oldPath
+  },
+  [Types.MOVE_FILE_CLEAR_OLD_PATH](state) {
+    state.moveFile.oldPath = ''
   },
   [Types.RESET_MODAL](state) {
     Object.assign(state, { ...initState })

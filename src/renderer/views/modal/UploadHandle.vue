@@ -8,7 +8,7 @@
         </span>
       </div>
       <div class="modal-body">
-        <local-image />
+        <local-image :src="''" />
       </div>
     </div>
   </div>

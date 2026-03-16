@@ -29,7 +29,7 @@
 </template>
 
 <script>
-import { mapState, mapGetters } from 'vuex'
+import { mapState } from 'vuex'
 
 import Icon from '@/components/Icon'
 
@@ -41,6 +41,8 @@ export default {
   data() {
     return {
       isSubmitting: false,
+      filePath: '',
+      isFolder: false,
     }
   },
   computed: {
@@ -49,6 +51,7 @@ export default {
   methods: {
     close() {
       this.$store.commit('CLOSE_RENAME_FILE_MODAL')
+      this.$store.commit('RENAME_FILE_CLEAR_OLD_PATH')
     },
     enter(el) {
       this.$nextTick(() => {
@@ -62,7 +65,7 @@ export default {
         .dispatch({
           type: 'RENAME_FILE',
           oldPath: this.modal.renameFile.oldPath,
-          newPath: this.filePath,
+          newPath: this.filePath.trim(),
           isFolder: this.isFolder,
         })
         .then(() => {

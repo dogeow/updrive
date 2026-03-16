@@ -7,7 +7,9 @@ export const bucketName = (state, getters) => {
 }
 
 export const baseHref = (state, getters) => {
-  return path(['profile', 'data', 'domain'])(state) || ''
+  const configuredDomain = path(['profile', 'data', 'domain'])(state) || ''
+  if (configuredDomain) return configuredDomain
+  return getters.bucketName ? `http://${getters.bucketName}.test.upcdn.net` : ''
 }
 
 export const externalUrls = (state, getters) => {
@@ -23,9 +25,16 @@ export const upyunClient = state => {
   return path(['auth', 'user', 'client'], state) || null
 }
 
-// 获取 upyun api url
+// 获取文件访问 url（优先加速域名，默认测试域名）
 export const getUpyunApiUrl = (state, getters) => uri => {
-  return getters.upyunClient.getUrl(uri)
+  const configuredDomain = getters.baseHref
+  const fallbackDomain = getters.bucketName ? `http://${getters.bucketName}.test.upcdn.net` : 'https://v0.api.upyun.com'
+  const domain = configuredDomain || fallbackDomain
+  try {
+    return new URL(uri, domain).href
+  } catch (error) {
+    return getters.upyunClient ? getters.upyunClient.getUrl(uri) : uri
+  }
 }
 
 // job 对象

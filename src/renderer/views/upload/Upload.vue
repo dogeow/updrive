@@ -1,7 +1,7 @@
 <template>
   <div class="task-container">
     <div class="tabs">
-      <div class="handle">
+      <div class="handle" v-if="!isEmptyList">
         <a @click="toggleShowClearCompletedModal(true)">清除已完成记录</a>
       </div>
     </div>

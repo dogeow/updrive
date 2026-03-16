@@ -54,7 +54,7 @@ export default {
   //     .then(responseHandle)
   // },
 
-  request(input, config = {}, responseHandle = response => response.data) {
+  request(input, config = {}, responseHandle = (response) => response.data) {
     const url = this.getUrl(input)
     config.url = url
     config.headers = { ...config.headers, ...this.getHeaders(url, config.method) }
@@ -109,7 +109,10 @@ export default {
             })
             const dirData = await this.getListDirInfo(_path)
             if (dirData && dirData.data && dirData.data.length)
-              await parseDir(dirData.data.map(fileObj => fileObj.uri), fromPath + Path.basename(_path) + '/')
+              await parseDir(
+                dirData.data.map((fileObj) => fileObj.uri),
+                fromPath + Path.basename(_path) + '/',
+              )
           } else {
             files.push({
               absolutePath: _path,
@@ -130,24 +133,23 @@ export default {
     }
 
     if (opts.type === 'file') {
-      files = files.filter(f => !isDir(f.absolutePath))
+      files = files.filter((f) => !isDir(f.absolutePath))
     }
 
     if (opts.type === 'folder') {
-      files = files.filter(f => isDir(f.absolutePath))
+      files = files.filter((f) => isDir(f.absolutePath))
     }
 
     if (opts.relative !== true) {
-      files = files.map(o => o.absolutePath)
+      files = files.map((o) => o.absolutePath)
     }
 
     return files
   },
 
-
   // HEAD 请求
   async head(uri) {
-    return this.request(uri, { method: 'HEAD' }, response => response.headers)
+    return this.request(uri, { method: 'HEAD' }, (response) => response.headers)
   },
 
   // GET 请求
@@ -166,8 +168,8 @@ export default {
   },
 
   // 获取目录列表信息
-  async getListDirInfo(uri = '/') {
-    return this.request(uri, { method: 'GET' }).then(
+  async getListDirInfo(uri = '/', requestConfig = {}) {
+    return this.request(uri, { method: 'GET', ...requestConfig }).then(
       compose(
         assoc('path', uri),
         ifElse(
@@ -176,7 +178,7 @@ export default {
           compose(
             objOf('data'),
             compose(
-              map(obj => {
+              map((obj) => {
                 obj.filetype = obj.folderType === 'F' ? '' : mime.getType(obj.filename)
                 obj.uri = uri + obj.filename + (obj.folderType === 'F' ? '/' : '')
                 return obj
@@ -203,7 +205,7 @@ export default {
     const uploadFile = async (uploadLocation, localFilePath) => {
       const localFileStat = statSync(localFilePath)
       const basename = Path.basename(localFilePath)
-      if(!localFileStat.isFile()) return Promise.resolve(this.createFolder(uploadLocation, basename))
+      if (!localFileStat.isFile()) return Promise.resolve(this.createFolder(uploadLocation, basename))
       const url = this.getUrl(uploadLocation + basename)
       const headers = { ...this.getHeaders(url, 'PUT') }
       return await jobObj.createUploadTask({
@@ -215,14 +217,14 @@ export default {
 
     // 广度优先遍历
     const uploadList = []
-    let list = localFilePaths.slice().map(path => ({ localFilePath: path, relativePath: '' }))
+    let list = localFilePaths.slice().map((path) => ({ localFilePath: path, relativePath: '' }))
 
     while (list.length) {
       const node = list.shift()
       const { localFilePath, relativePath } = node
       if (statSync(localFilePath).isDirectory() && readdirSync(localFilePath).length) {
         list = list.concat(
-          readdirSync(localFilePath).map(name => ({
+          readdirSync(localFilePath).map((name) => ({
             localFilePath: Path.join(localFilePath, name),
             relativePath: relativePath + Path.basename(localFilePath) + '/',
           })),
@@ -296,7 +298,7 @@ export default {
     const results = []
 
     const dir = await this.traverseDir(uris, { relative: true })
-    const dirAll = dir.map(pathObj => {
+    const dirAll = dir.map((pathObj) => {
       return {
         uri: isDir(pathObj.absolutePath) ? '' : pathObj.absolutePath,
         localPath: Path.join(
@@ -331,5 +333,139 @@ export default {
   async renameFile(oldPath, newPath) {
     await this.ftp.renameFile(oldPath, newPath)
   },
-}
 
+  // 规范目录路径
+  normalizeFolderPath(path = '') {
+    const withLeadingSlash = path.startsWith('/') ? path : `/${path}`
+    return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`
+  },
+
+  // 确保远程目录存在（递归创建）
+  async ensureRemoteFolder(folderPath, results) {
+    const normalizedPath = this.normalizeFolderPath(folderPath)
+    const segments = normalizedPath.split('/').filter(Boolean)
+    let current = '/'
+
+    for (const segment of segments) {
+      const next = `${current}${segment}/`
+      try {
+        await this.createFolder(current, segment)
+        if (results && !results.createdFolders.includes(next)) {
+          results.createdFolders.push(next)
+        }
+      } catch (err) {
+      }
+      current = next
+    }
+  },
+
+  // 重命名目录：优先使用原生重命名，不支持时降级为递归搬迁
+  async renameFolder(oldPath, newPath) {
+    const sourcePath = this.normalizeFolderPath(oldPath)
+    const targetPath = this.normalizeFolderPath(newPath)
+
+    if (sourcePath === targetPath) {
+      return {
+        success: true,
+        createdFolders: [],
+        movedFiles: [],
+        deletedFolders: [],
+        errors: [],
+      }
+    }
+
+    try {
+      await this.ftp.renameFile(sourcePath, targetPath, {
+        retryTimes: 0,
+        connectTimeoutMs: 5000,
+        renameTimeoutMs: 2000,
+      })
+      return {
+        success: true,
+        createdFolders: [],
+        movedFiles: [{ type: 'folder', source: sourcePath, target: targetPath }],
+        deletedFolders: [sourcePath],
+        errors: [],
+      }
+    } catch (err) {
+      return await this.moveFolder(sourcePath, targetPath)
+    }
+  },
+
+  // 移动/重命名目录（曲线救国方案）
+  async moveFolder(sourcePath, targetPath) {
+    const results = {
+      success: true,
+      createdFolders: [],
+      movedFiles: [],
+      deletedFolders: [],
+      errors: [],
+    }
+
+    try {
+      const srcDir = this.normalizeFolderPath(sourcePath)
+      const tgtDir = this.normalizeFolderPath(targetPath)
+
+      if (srcDir === '/') {
+        throw new Error('不支持移动根目录')
+      }
+
+      if (srcDir === tgtDir) {
+        return results
+      }
+
+      if (tgtDir.startsWith(srcDir)) {
+        throw new Error('目标目录不能在源目录内部')
+      }
+
+      await this.ensureRemoteFolder(tgtDir, results)
+
+      const sourceList = await this.getListDirInfo(srcDir, { timeout: 15000 })
+      const sourceItems = (sourceList && sourceList.data) || []
+
+      for (const item of sourceItems) {
+        const sourceUri = item.uri
+        const targetUri = tgtDir + item.filename + (item.folderType === 'F' ? '/' : '')
+
+        if (item.folderType === 'F') {
+          const childResult = await this.moveFolder(sourceUri, targetUri)
+          results.createdFolders = results.createdFolders.concat(childResult.createdFolders)
+          results.movedFiles = results.movedFiles.concat(childResult.movedFiles)
+          results.deletedFolders = results.deletedFolders.concat(childResult.deletedFolders)
+          results.errors = results.errors.concat(childResult.errors)
+          if (!childResult.success) {
+            results.success = false
+          }
+          continue
+        }
+
+        try {
+          await this.ftp.renameFile(sourceUri, targetUri)
+          results.movedFiles.push({ type: 'file', source: sourceUri, target: targetUri })
+        } catch (err) {
+          results.success = false
+          results.errors.push({ item: sourceUri, error: err.message })
+        }
+      }
+
+      if (results.errors.length) {
+        results.success = false
+        return results
+      }
+
+      try {
+        await this.request(srcDir, { method: 'DELETE', timeout: 15000 })
+        results.deletedFolders.push(srcDir)
+      } catch (err) {
+        results.success = false
+        results.errors.push({ item: srcDir, error: err.message })
+      }
+
+      return results
+    } catch (err) {
+      results.success = false
+      results.errors.push({ item: sourcePath, error: err.message })
+      return results
+    }
+  },
+}

@@ -25,8 +25,14 @@ export const CLOSE_CREATE_FOLDER_MODAL = 'CLOSE_CREATE_FOLDER_MODAL' // 关闭�
 export const OPEN_RENAME_FILE_MODAL = 'OPEN_RENAME_FILE_MODAL' // 打开重命名 modal
 export const CLOSE_RENAME_FILE_MODAL = 'CLOSE_RENAME_FILE_MODAL' // 关闭重命名 modal
 
+export const OPEN_MOVE_FILE_MODAL = 'OPEN_MOVE_FILE_MODAL' // 打开移动 modal
+export const CLOSE_MOVE_FILE_MODAL = 'CLOSE_MOVE_FILE_MODAL' // 关闭移动 modal
+
 export const RENAME_FILE_SET_OLD_PATH = 'RENAME_FILE_SET_OLD_PATH' // 设置 oldpath
 export const RENAME_FILE_CLEAR_OLD_PATH = 'RENAME_FILE_CLEAR_OLD_PATH' // 清除 oldpath
+
+export const MOVE_FILE_SET_OLD_PATH = 'MOVE_FILE_SET_OLD_PATH' // 设置移动 oldpath
+export const MOVE_FILE_CLEAR_OLD_PATH = 'MOVE_FILE_CLEAR_OLD_PATH' // 清除移动 oldpath
 
 export const OPEN_DOMAIN_SETTING_MODAL = 'OPEN_DOMAIN_SETTING_MODAL' // 打开域名设置框
 export const CLOSE_DOMAIN_SETTING_MODAL = 'CLOSE_DOMAIN_SETTING_MODAL' // 关闭域名设置框

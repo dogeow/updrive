@@ -5,7 +5,8 @@
       <router-view name="body"></router-view>
     </keep-alive>
     <!-- 改变key，可以触发 created 生命周期  -->
-    <rename-file :key="modal.renameFile.oldPath" />
+    <rename-file :key="`rename:${modal.renameFile.oldPath}`" />
+    <move-file :key="`move:${modal.moveFile.oldPath}`" />
     <file-progress />
     <create-folder />
     <domain-setting />
@@ -19,6 +20,7 @@ import { mapState } from 'vuex'
 
 import CreateFolder from '@/views/modal/CreateFolder'
 import RenameFile from '@/views/modal/RenameFile'
+import MoveFile from '@/views/modal/MoveFile'
 import FileProgress from '@/views/modal/FileProgress'
 import DomainSetting from '@/views/modal/DomainSetting'
 import FormatUrl from '@/views/modal/FormatUrl'
@@ -29,6 +31,7 @@ export default {
   components: {
     CreateFolder,
     RenameFile,
+    MoveFile,
     FileProgress,
     DomainSetting,
     FormatUrl,

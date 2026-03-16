@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+const remoteMain = require('@electron/remote/main')
 
 /**
  * Set `__static` path to static files in production
@@ -9,11 +10,12 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 let mainWindow
-const winURL = process.env.NODE_ENV === 'development'
-  ? `http://localhost:9080`
-  : `file://${__dirname}/index.html`
+const winURL =
+  process.env.NODE_ENV === 'development' ? `http://localhost:9080` : `file://${__dirname}/../web/index.html`
 
-function createWindow () {
+remoteMain.initialize()
+
+function createWindow() {
   /**
    * Initial window options
    */
@@ -23,8 +25,15 @@ function createWindow () {
     width: 980,
     minHeight: 525,
     minWidth: 980,
-    webPreferences: { webSecurity: false},
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      enableRemoteModule: true,
+      webSecurity: true,
+    },
   })
+
+  remoteMain.enable(mainWindow.webContents)
 
   mainWindow.loadURL(winURL)
 

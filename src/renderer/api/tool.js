@@ -163,10 +163,10 @@ export const getFileIconClass = (filename = '', folderType) => {
 }
 
 export const externalUrls = {
-  repository: 'https://github.com/aniiantt/updrive',
-  issues: 'https://github.com/aniiantt/updrive/issues/new',
-  releases: 'https://github.com/aniiantt/updrive/releases',
-  latest: 'https://github.com/aniiantt/updrive/releases/latest',
+  repository: 'https://github.com/dogeow/updrive',
+  issues: 'https://github.com/dogeow/updrive/issues/new',
+  releases: 'https://github.com/dogeow/updrive/releases',
+  latest: 'https://github.com/dogeow/updrive/releases/latest',
 }
 
 export const listSort = (data = [], key, isReverse) => {
@@ -214,5 +214,5 @@ export const listSort = (data = [], key, isReverse) => {
 
 export const createImage = () => {
 
-  console.log('大大说')
+  console.log('创建图片')
 }

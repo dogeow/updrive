@@ -29,12 +29,16 @@ const initState = {
 
 const mutations = {
   [Types.SET_CURRENT_LIST](state, { data, action }) {
-    const historyPath = path(['dirInfo', 'path'], state)
+    const historyPath = path(['dirInfo', 'path'], state) || '/'
     let forwardStack = path(['history', 'forwardStack'], state)
     let backStack = path(['history', 'backStack'], state)
+    const nextPath = path(['path'], data)
+    const safeNextPath = typeof nextPath === 'string' && nextPath ? nextPath : historyPath
 
     state.dirInfo = {
+      ...state.dirInfo,
       ...data,
+      path: safeNextPath,
       loading: false,
     }
 

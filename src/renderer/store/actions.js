@@ -25,7 +25,7 @@ export default {
         Session.setUser(userInfo)
         return userInfo
       })
-      .catch(error => {
+      .catch((error) => {
         commit(Types.CLEAR_USER_INFO)
         Session.clear()
         return Promise.reject(error)
@@ -34,9 +34,11 @@ export default {
   // 获取文件目录信息
   [Types.GET_LIST_DIR_INFO]({ getters, commit }, { remotePath, spinner = true, action }) {
     if (spinner) commit({ type: Types.SET_LOADING_LIST, data: true })
+    console.log('[GET_LIST_DIR_INFO] 调用 upyunClient.getListDirInfo, remotePath:', remotePath, 'action:', action)
     return getters.upyunClient
       .getListDirInfo(remotePath)
-      .then(result => {
+      .then((result) => {
+        console.log('[GET_LIST_DIR_INFO] API 返回成功, result.path:', result && result.path)
         commit({
           type: Types.SET_CURRENT_LIST,
           data: result,
@@ -44,7 +46,10 @@ export default {
         })
         return result
       })
-      .catch(errorHandler)
+      .catch((err) => {
+        console.error('[GET_LIST_DIR_INFO] API 调用异常:', err)
+        errorHandler(err)
+      })
   },
   // 创建目录
   [Types.CREATE_FOLDER]({ getters, commit, dispatch }, { remotePath, folderName }) {
@@ -62,8 +67,8 @@ export default {
   [Types.DELETE_FILE]({ getters, commit, dispatch }, { selectedPaths } = {}) {
     return getters.upyunClient
       .deleteFiles(selectedPaths)
-      .then(results => {
-        const isAllSuccess = !results.some(r => !r.result)
+      .then((results) => {
+        const isAllSuccess = !results.some((r) => !r.result)
         if (isAllSuccess) {
           Message.success('删除成功')
         } else {
@@ -75,6 +80,20 @@ export default {
   },
   // 重命名
   [Types.RENAME_FILE]({ getters, commit, dispatch }, { oldPath, newPath, isFolder } = {}) {
+    if (isFolder) {
+      return getters.upyunClient
+        .renameFolder(oldPath, newPath)
+        .then((result) => {
+          if (result.success) {
+            Message.success('目录重命名/移动成功')
+          } else {
+            Message.warning(`目录操作已完成，但有 ${result.errors.length} 项失败`)
+          }
+        })
+        .then(() => dispatch({ type: Types.REFRESH_LIST, spinner: false }))
+        .catch(errorHandler)
+    }
+
     return getters.upyunClient
       .renameFile(oldPath, newPath)
       .then(() => Message.success('操作成功'))
@@ -86,9 +105,9 @@ export default {
     return (
       getters.upyunClient
         .downloadFiles(destPath, downloadPath, getters.job)
-        .then(results => {
-          const isAllSuccess = !results.some(r => !r.result)
-          const notify = title =>
+        .then((results) => {
+          const isAllSuccess = !results.some((r) => !r.result)
+          const notify = (title) =>
             Notification.notify(
               title,
               {
@@ -118,9 +137,9 @@ export default {
     return (
       getters.upyunClient
         .uploadFiles(remotePath, localFilePaths, getters.job)
-        .then(results => {
-          const isAllSuccess = !results.some(r => !r.result)
-          const notify = title =>
+        .then((results) => {
+          const isAllSuccess = !results.some((r) => !r.result)
+          const notify = (title) =>
             Notification.notify(
               title,
               {
@@ -152,7 +171,7 @@ export default {
         if (basicInfo.folderType === 'F') return Promise.resolve()
         return getters.upyunClient.head(uri)
       })
-      .then(data => {
+      .then((data) => {
         const fileType = data && getFileType(data['content-type'])
         commit({
           type: Types.SET_FILE_DETAIL_INFO,
@@ -166,7 +185,7 @@ export default {
   },
   // 同步任务列表
   [Types.SYNC_JOB_LIST]({ getters, commit }, {} = {}) {
-    getters.job.getStore().then(store => {
+    getters.job.getStore().then((store) => {
       commit(Types.SET_JOB_LIST, store ? store.data : [])
     })
   },
@@ -182,7 +201,7 @@ export default {
   },
   // 获取空间使用量
   [Types.GET_USAGE]({ state, getters, commit, dispatch }, {} = {}) {
-    return getters.upyunClient.getUsage().then(data => {
+    return getters.upyunClient.getUsage().then((data) => {
       commit(Types.SET_USAGE, { data })
     })
   },
@@ -199,7 +218,7 @@ export default {
   },
   // 同步 profile 数据
   [Types.SYNC_PROFILE_DATA]({ getters, commit }, {} = {}) {
-    getters.profile.getStore().then(store => {
+    getters.profile.getStore().then((store) => {
       commit(Types.SET_PROFILE_DATA, store ? store.data : {})
     })
   },
