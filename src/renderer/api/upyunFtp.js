@@ -15,24 +15,6 @@ export default {
       isReady = false
     }
 
-    const withTimeout = (promise, timeoutMs, message) => {
-      return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          reject(new Error(message))
-        }, timeoutMs)
-
-        promise
-          .then(result => {
-            clearTimeout(timer)
-            resolve(result)
-          })
-          .catch(err => {
-            clearTimeout(timer)
-            reject(err)
-          })
-      })
-    }
-
     const wait = ms => {
       return new Promise(resolve => setTimeout(resolve, ms))
     }
@@ -60,36 +42,29 @@ export default {
 
       setTimeoutMs(timeoutMs)
 
-      return withTimeout(
-        ftpClient
-          .access({
-            host: 'v0.ftp.upyun.com',
-            user: `${operatorName}/${bucketName}`,
-            password,
-          })
-          .then(() => {
-            isReady = true
-            console.info('--------------- ftp 连接成功 ---------------')
-          })
-          .catch(err => {
-            markClosed()
-            console.error('FTP 错误:', (err && err.message) || err)
-            throw err || new Error('FTP 连接失败')
-          }),
-        timeoutMs,
-        'FTP 连接超时',
-      )
+      return ftpClient
+        .connect('v0.ftp.upyun.com', 21)
+        .then(() => ftpClient.login(`${operatorName}/${bucketName}`, password))
+        .then(() => {
+          isReady = true
+          console.info('--------------- ftp 连接成功 ---------------')
+        })
+        .catch(err => {
+          markClosed()
+          console.error('FTP 错误:', (err && err.message) || err)
+          throw err || new Error('FTP 连接失败')
+        })
     }
 
     const renamePromise = (oldPath, newPath, timeoutMs = 15000) => {
       setTimeoutMs(timeoutMs)
-      return withTimeout(ftpClient.rename(oldPath, newPath), timeoutMs, `FTP 路径修改超时: ${oldPath} => ${newPath}`)
+      return ftpClient.rename(oldPath, newPath)
     }
 
     this.renameFile = async (oldPath, newPath, options = {}) => {
       const {
         retryTimes = 1,
-        connectTimeoutMs = 10000,
+        connectTimeoutMs = 20000,
         renameTimeoutMs = 15000,
         retryDelayMs = 300,
       } = options
@@ -104,7 +79,11 @@ export default {
           return Promise.resolve(newPath)
         } catch (err) {
           lastError = err
-          closeClient()
+          if (!ftpClient.closed) {
+            closeClient()
+          } else {
+            markClosed()
+          }
           if (attempt < retryTimes) {
             await wait(retryDelayMs)
             continue

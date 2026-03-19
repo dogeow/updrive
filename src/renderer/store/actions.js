@@ -107,9 +107,15 @@ export default {
     const isFolder = sourcePath.endsWith('/')
 
     if (isFolder) {
+      const folderName = sourcePath
+        .split('/')
+        .filter(Boolean)
+        .pop()
+      const destinationPath = `${targetPath}${folderName}/`
+
       // 移动文件夹
       return getters.upyunClient
-        .renameFolder(sourcePath, targetPath)
+        .renameFolder(sourcePath, destinationPath)
         .then((result) => {
           if (result.success) {
             Message.success('移动成功')
@@ -246,13 +252,13 @@ export default {
   },
   // 设置 profile 存储数据
   [Types.SET_PROFILE_STORE]({ getters, dispatch }, { data } = {}) {
-    getters.profile.setStoreData(data).then(() => {
-      dispatch('SYNC_PROFILE_DATA')
+    return getters.profile.setStoreData(data).then(() => {
+      return dispatch('SYNC_PROFILE_DATA')
     })
   },
   // 同步 profile 数据
   [Types.SYNC_PROFILE_DATA]({ getters, commit }, {} = {}) {
-    getters.profile.getStore().then((store) => {
+    return getters.profile.getStore().then((store) => {
       commit(Types.SET_PROFILE_DATA, store ? store.data : {})
     })
   },

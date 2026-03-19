@@ -7,7 +7,7 @@
         <h2 class="section-title">文件浏览</h2>
         <div class="setting-item">
           <label class="checkbox">
-            <input type="checkbox" v-model="loadFolderCover" @change="saveSettings">
+            <input type="checkbox" v-model="loadFolderCover" @change="saveLoadFolderCover">
             在缩略图模式下加载文件夹封面图片
           </label>
         </div>
@@ -21,11 +21,12 @@
             :class="{'is-danger': isDomainInvalid}"
             type="text"
             v-model="domain"
+            @input="queueDomainSave"
+            @blur="flushDomainSave"
             placeholder="请输入加速域名（包含 http:// 或 https://）"
           >
           <p class="help is-danger" v-if="isDomainInvalid">请输入包含 http:// 或 https:// 的正确的域名</p>
         </div>
-        <button class="button is-primary" @click="saveDomain" :disabled="!domain">保存</button>
         <hr>
         <article class="message">
           <div class="message-body">
@@ -42,7 +43,6 @@
 <script>
 import { mapState, mapGetters } from 'vuex'
 import { path } from 'ramda'
-import Message from '@/api/message.js'
 import { openExternal } from '@/api/electron.js'
 
 export default {
@@ -51,6 +51,7 @@ export default {
     return {
       domain: '',
       isDomainInvalid: false,
+      lastSavedDomain: '',
       loadFolderCover: true,
     }
   },
@@ -59,38 +60,74 @@ export default {
     ...mapGetters(['externalUrls']),
   },
   created() {
+    this._domainSaveTimer = null
+    this._domainSavePromise = Promise.resolve()
     this.loadSettings()
+  },
+  beforeDestroy() {
+    this.clearDomainSaveTimer()
   },
   methods: {
     loadSettings() {
-      this.domain = path(['data', 'domain'], this.profile) || ''
+      const savedDomain = path(['data', 'domain'], this.profile) || ''
+      this.domain = savedDomain
+      this.lastSavedDomain = savedDomain
       this.loadFolderCover = path(['data', 'loadFolderCover'], this.profile) !== false
     },
-    saveSettings() {
-      this.$store.dispatch('SET_PROFILE_STORE', {
+    clearDomainSaveTimer() {
+      if (this._domainSaveTimer) {
+        clearTimeout(this._domainSaveTimer)
+        this._domainSaveTimer = null
+      }
+    },
+    saveLoadFolderCover() {
+      return this.$store.dispatch('SET_PROFILE_STORE', {
         data: {
           loadFolderCover: this.loadFolderCover,
         },
       })
     },
+    queueDomainSave() {
+      this.isDomainInvalid = false
+      this.clearDomainSaveTimer()
+      this._domainSaveTimer = setTimeout(() => {
+        this.saveDomain()
+      }, 500)
+    },
+    flushDomainSave() {
+      this.clearDomainSaveTimer()
+      return this.saveDomain()
+    },
     saveDomain() {
-      if (!this.domain) return
+      const nextDomain = this.domain.trim()
+      if (nextDomain === this.lastSavedDomain) return this._domainSavePromise
 
-      try {
-        new URL(this.domain)
+      if (nextDomain) {
+        try {
+          new URL(nextDomain)
+          this.isDomainInvalid = false
+        } catch (err) {
+          this.isDomainInvalid = true
+          return Promise.resolve(false)
+        }
+      } else {
         this.isDomainInvalid = false
-      } catch (err) {
-        this.isDomainInvalid = true
-        return
       }
 
-      this.$store.dispatch('SET_PROFILE_STORE', {
-        data: {
-          domain: this.domain,
-        },
+      this._domainSavePromise = this._domainSavePromise.catch(() => {}).then(() => {
+        return this.$store.dispatch('SET_PROFILE_STORE', {
+          data: {
+            domain: nextDomain,
+          },
+        })
       }).then(() => {
-        Message.success('保存成功')
+        this.lastSavedDomain = nextDomain
+        if (this.domain !== nextDomain) {
+          this.domain = nextDomain
+        }
       })
+
+      return this._domainSavePromise
     },
     openExternal(url) {
       openExternal(url)
@@ -144,9 +181,5 @@ export default {
     max-width: 400px;
     margin-bottom: 8px;
   }
-}
-
-.button {
-  margin-top: 8px;
 }
 </style>
