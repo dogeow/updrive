@@ -1,10 +1,10 @@
 <template>
   <nav class="breadcrumb">
     <ul v-if="!pageTitle">
-      <li :class="{'is-active': !pathArray.length}">
-        <a @click.prevent.stop="goto()">{{auth.user.bucketName}}</a>
+      <li>
+        <a @click.prevent.stop="goto()">Home</a>
       </li>
-      <li :class="{'is-active': index === pathArray.length - 1}" v-for="(name, index) in pathArray" :key="name + index">
+      <li v-for="(name, index) in filteredPathArray" :key="index" :class="{'is-active': index === filteredPathArray.length - 1}">
         <a @click.prevent.stop="goto(index)">{{name}}</a>
       </li>
     </ul>
@@ -17,8 +17,6 @@
 </template>
 
 <script>
-import { mapState } from 'vuex'
-
 export default {
   name: 'Breadcrumb',
   props: {
@@ -27,7 +25,9 @@ export default {
     goto: Function,
   },
   computed: {
-    ...mapState(['auth']),
+    filteredPathArray() {
+      return (this.pathArray || []).filter(p => p && p.trim())
+    },
   },
 }
 </script>
