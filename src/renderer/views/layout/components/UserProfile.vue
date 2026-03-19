@@ -56,7 +56,9 @@ export default {
       this.isShowProfileMenu = false
     },
     toggleAccount() {
-      this.$router.push({ name: 'login' })
+      if (this.$route.name !== 'login') {
+        this.$router.push({ name: 'login' })
+      }
       this.$store.dispatch('LOGOUT')
       this.isShowProfileMenu = false
     },
