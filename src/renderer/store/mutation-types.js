@@ -2,7 +2,6 @@
 
 export const CLEAR_USER_INFO = 'CLEAR_USER_INFO' // 清除用户信息
 
-
 export const RESET_AUTH = 'RESET_AUTH'
 export const RESET_LIST = 'RESET_LIST'
 export const RESET_MODAL = 'RESET_MODAL'
@@ -62,6 +61,7 @@ export const CREATE_FOLDER = 'CREATE_FOLDER' // 创建文件夹
 export const REFRESH_LIST = 'REFRESH_LIST' // 刷新当前目录
 export const DELETE_FILE = 'DELETE_FILE' // 删除文件
 export const RENAME_FILE = 'RENAME_FILE' // 重命名文件
+export const MOVE_FILES = 'MOVE_FILES' // 移动文件
 export const DOWNLOAD_FILES = 'DOWNLOAD_FILES' // 下载文件
 export const GET_FILE_DETAIL_INFO = 'GET_FILE_DETAIL_INFO' // 获取文件详情信息
 export const SET_FILE_DETAIL_INFO = 'SET_FILE_DETAIL_INFO' // 设置文件详情信息
