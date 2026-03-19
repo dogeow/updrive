@@ -54,6 +54,8 @@
           :getListTabIndex="getListTabIndex"
           :isImageFile="isImageFile"
           :getThumbnailUrl="getThumbnailUrl"
+          :getFolderCover="getFolderCover"
+          :folderCoverMap="folderCoverMap"
           :getFileIconClass="getFileIconClass"
           @select-item="selectItem"
           @dblclick-item="dblclickItem"
@@ -176,6 +178,7 @@ export default {
       isDragOver: false,
       showDeleteModal: false,
       thumbnailFallbackMap: {},
+      folderCoverMap: {}, // 文件夹封面缓存
     }
   },
   computed: {
@@ -246,7 +249,7 @@ export default {
       return last(forwardStack)
     },
     ...mapState(['list', 'auth', 'profile']),
-    ...mapGetters(['baseHref', 'getUpyunApiUrl']),
+    ...mapGetters(['baseHref', 'getUpyunApiUrl', 'upyunClient']),
   },
   watch: {
     currentDirPath() {
@@ -268,6 +271,33 @@ export default {
       const originalUrl = this.getUpyunApiUrl(file.uri)
       if (this.thumbnailFallbackMap[file.uri]) return originalUrl
       return `${originalUrl}!/fw/${this.thumbnailRequestWidth}`
+    },
+    // 获取文件夹封面图片
+    getFolderCover(file = {}) {
+      // 如果不是文件夹，返回空
+      if (!file || file.folderType !== 'F') return []
+
+      // 如果已有缓存，直接返回
+      if (this.folderCoverMap[file.uri]) {
+        return this.folderCoverMap[file.uri]
+      }
+
+      // 返回空并在后台加载
+      this.loadFolderCover(file)
+      return []
+    },
+    // 异步加载文件夹封面
+    async loadFolderCover(file) {
+      if (!file || !file.uri || file.folderType !== 'F') return
+
+      try {
+        const images = await this.upyunClient.getFolderCover(file.uri, 4)
+        if (images && images.length > 0) {
+          this.folderCoverMap[file.uri] = images
+        }
+      } catch (err) {
+        console.error('Failed to load folder cover:', err)
+      }
     },
     onThumbnailError(file = {}) {
       if (!file.uri || this.thumbnailFallbackMap[file.uri]) return
