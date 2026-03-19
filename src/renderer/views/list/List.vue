@@ -286,6 +286,13 @@ export default {
       this.isViewDetail = value !== undefined ? value : !this.isViewDetail
     },
     dragstart($event) {
+      console.log('[List] dragstart')
+      // 不阻止默认行为，让子元素的 dragstart 正常工作
+      // 如果没有选中文件，才允许默认的拖动上传行为
+      if (!this.selected.length) {
+        return true
+      }
+      // 如果有选中文件，阻止默认行为
       return false
     },
     dragleave($event) {
@@ -296,16 +303,27 @@ export default {
       return false
     },
     dragover($event) {
+      console.log('[List] dragover')
       this.isDragOver = true
+      // 必须调用 preventDefault 才能触发 drop 事件
+      $event.preventDefault()
       return false
     },
     drop($event) {
+      console.log('[List] drop, files:', $event.dataTransfer.files.length)
       this.isDragOver = false
       $event.preventDefault()
-      this.$store.dispatch('UPLOAD_FILES', {
-        remotePath: this.currentDirPath,
-        localFilePaths: pluck('path', $event.dataTransfer.files),
-      })
+
+      // 检查是否是文件拖入（上传）还是内部文件移动
+      const files = $event.dataTransfer.files
+      if (files && files.length > 0) {
+        // 文件拖入 - 上传
+        console.log('[List] UPLOAD_FILES')
+        this.$store.dispatch('UPLOAD_FILES', {
+          remotePath: this.currentDirPath,
+          localFilePaths: pluck('path', files),
+        })
+      }
       return false
     },
     getListTabIndex(uri) {
