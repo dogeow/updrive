@@ -334,6 +334,22 @@ export default {
     await this.ftp.renameFile(oldPath, newPath)
   },
 
+  // 移动文件到指定目录
+  async moveFile(sourcePath, targetFolderPath) {
+    // 提取文件名
+    const parts = sourcePath.split('/')
+    const fileName = parts[parts.length - 1]
+    const targetPath = targetFolderPath + fileName
+
+    // 使用 renameFile 来移动文件
+    await this.renameFile(sourcePath, targetPath)
+    return {
+      success: true,
+      sourcePath,
+      targetPath,
+    }
+  },
+
   // 规范目录路径
   normalizeFolderPath(path = '') {
     const withLeadingSlash = path.startsWith('/') ? path : `/${path}`
@@ -353,8 +369,7 @@ export default {
         if (results && !results.createdFolders.includes(next)) {
           results.createdFolders.push(next)
         }
-      } catch (err) {
-      }
+      } catch (err) {}
       current = next
     }
   },
