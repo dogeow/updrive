@@ -6,6 +6,10 @@
     @click.stop="$emit('select-item', file, $event, index)"
     @dblclick.stop="file && file.uri && $emit('dblclick-item', file.uri)"
     @contextmenu.prevent="$emit('contextmenu-item', file)"
+    :draggable="file && file.uri"
+    @dragstart="handleDragStart"
+    @dragover="handleDragOver"
+    @drop="handleDrop"
   >
     <div class="files-thumbnail-preview">
       <img
@@ -32,6 +36,53 @@ export default {
     isImageFile: Function,
     getThumbnailUrl: Function,
     getFileIconClass: Function,
+  },
+  methods: {
+    handleDragStart(event) {
+      console.log('[Thumbnail] dragstart')
+      if (!this.file || !this.file.uri) {
+        event.preventDefault()
+        return
+      }
+      event.dataTransfer.setData('text/plain', this.file.uri)
+      event.dataTransfer.effectAllowed = 'move'
+    },
+    handleDragOver(event) {
+      console.log('[Thumbnail] dragover')
+      if (this.file && this.file.folderType === 'F') {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = 'move'
+      }
+    },
+    handleDrop(event) {
+      console.log('[Thumbnail] drop')
+      event.preventDefault()
+      event.stopPropagation()
+
+      if (!this.file || this.file.folderType !== 'F') {
+        return
+      }
+
+      const sourceUri = event.dataTransfer.getData('text/plain')
+      if (!sourceUri) {
+        return
+      }
+
+      if (sourceUri === this.file.uri) {
+        return
+      }
+
+      let targetPath = this.file.uri
+      if (!targetPath.endsWith('/')) {
+        targetPath += '/'
+      }
+
+      console.log('[Thumbnail] MOVE_FILES:', sourceUri, '->', targetPath)
+      this.$store.dispatch('MOVE_FILES', {
+        sourcePath: sourceUri,
+        targetPath: targetPath,
+      })
+    },
   },
 }
 </script>
