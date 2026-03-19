@@ -150,14 +150,14 @@ export const showContextmenu = (items, opts = {}) => {
   setTimeout(() => menu.popup(currentWin))
 }
 
-// 获取版本号
-export const getVersion = app.getVersion
+// 获取版本号 (使用 package.json 中的 version 字段)
+export const getVersion = () => require('../../../package.json').version || '0.0.0'
 
-// 获取产品名称
-export const getName = app.getName
+// 获取产品名称 (使用 package.json 中的 name 字段)
+export const getName = () => require('../../../package.json').name || 'updrive'
 
 // 监听 Ctrl + A
-export const listenSelectAll = callback => ipcRenderer.on('SHORTCUT_SELECT_ALL', callback)
+export const listenSelectAll = (callback) => ipcRenderer.on('SHORTCUT_SELECT_ALL', callback)
 
 // 上传文件
 export const uploadFileDialog = (option = {}) => {
@@ -218,17 +218,17 @@ export const downloadFileDialog = (option = {}) => {
         properties: ['openDirectory', 'createDirectory', 'showHiddenFiles'],
         ...option,
       },
-      folderPaths => {
+      (folderPaths) => {
         resolve(folderPaths && folderPaths[0])
       },
     )
   })
 }
 
-export const showItemInFolder = fullPath => {
+export const showItemInFolder = (fullPath) => {
   return shell.showItemInFolder(fullPath)
 }
 
-export const openItem = fullPath => {
+export const openItem = (fullPath) => {
   return shell.openItem(fullPath)
 }

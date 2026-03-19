@@ -9,6 +9,7 @@ import Login from '@/views/login/Login'
 import List from '@/views/list/List'
 import Upload from '@/views/upload/Upload'
 import Download from '@/views/download/Download'
+import Settings from '@/views/settings/Settings'
 import Session from '@/api/session.js'
 
 Vue.use(Router)
@@ -44,6 +45,16 @@ const router = new Router({
           },
           meta: {
             pageTitle: '下载列表',
+          },
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          components: {
+            body: Settings,
+          },
+          meta: {
+            pageTitle: '设置',
           },
         },
       ],

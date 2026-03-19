@@ -26,7 +26,7 @@ export default {
       return dirPath
     },
     pathArray() {
-      return compose(filter(identity), split('/'))(this.normalizedDirPath)
+      return this.normalizedDirPath.split('/').filter(p => p && p.trim())
     },
     pageTitle() {
       return this.$route.meta && this.$route.meta.pageTitle
@@ -39,7 +39,7 @@ export default {
   methods: {
     goto(index) {
       const remotePath =
-        index === undefined ? '/' : concat('/', concat(join('/', take(index + 1)(this.pathArray)), '/'))
+        index === undefined ? '/' : '/' + join('/', take(index + 1)(this.pathArray)) + '/'
       return this.$store.dispatch({
         type: 'GET_LIST_DIR_INFO',
         remotePath,

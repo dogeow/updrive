@@ -21,13 +21,6 @@
         </p>
         <p class="has-text-danger" v-show="isDomaininvaild">请输入包含 http:// 或 https:// 的正确的域名</p>
         <hr>
-        <div class="field">
-          <label class="checkbox">
-            <input type="checkbox" v-model="loadFolderCover">
-            在缩略图模式下加载文件夹封面图片
-          </label>
-        </div>
-        <hr>
         <article class="message">
           <div class="message-body">
             <p>获取链接之前，需要指定一个加速域名用来生成链接（包含 http:// 或 https://）。你可以通过访问<a class="message-link" title="点击查看加速域名" @click="openExternal(externalUrls.domain)">又拍云控制台</a>查看你绑定的加速域名。</p>
@@ -60,7 +53,6 @@ export default {
       domain: '',
       isDomaininvaild: false,
       isSubmitting: false,
-      loadFolderCover: true,
     }
   },
   computed: {
@@ -88,7 +80,6 @@ export default {
         .dispatch('SET_PROFILE_STORE', {
           data: {
             domain: this.domain,
-            loadFolderCover: this.loadFolderCover,
           },
         })
         .then(() => Message.success('操作成功'))

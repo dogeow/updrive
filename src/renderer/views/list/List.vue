@@ -79,7 +79,6 @@
       :getFileIconClass="getFileIconClass"
       @close-detail="toggleShowViewDetail"
       @copy-href="copyHref"
-      @open-domain-setting="openDomainSettingModal"
     />
     <confirm-modal
       title="是否删除选中文件?"
@@ -257,6 +256,10 @@ export default {
   watch: {
     currentDirPath() {
       this.thumbnailFallbackMap = {}
+    },
+    'profile.data.loadFolderCover': function() {
+      // 当设置变化时，清空文件夹封面缓存
+      this.folderCoverMap = {}
     },
   },
   methods: {
@@ -512,13 +515,10 @@ export default {
           this.detailLoading = false
         })
     },
-    openDomainSettingModal() {
-      this.$store.commit('OPEN_DOMAIN_SETTING_MODAL')
-    },
     getHref(uri = this.uniqueSelectedUri) {
       if (!this.baseHref) {
         Message.warning('请先设置加速域名，再进行获取链接操作')
-        this.openDomainSettingModal()
+        this.$router.push({ name: 'settings' })
         return ''
       } else {
         try {
@@ -550,8 +550,16 @@ export default {
             this.listGetFocus()
           })
       } else {
-        // @TODO
-        this.isViewDetail ? this.toggleShowViewDetail() : this.getFileDetail()
+        // 如果是图片，在浏览器中打开
+        const file = this.listData.find(f => f.uri === uri)
+        if (file && this.isImageFile(file)) {
+          const href = this.getHref(uri)
+          if (href) {
+            openExternal(href)
+          }
+        } else {
+          this.isViewDetail ? this.toggleShowViewDetail() : this.getFileDetail()
+        }
       }
     },
     // 删除文件

@@ -149,15 +149,16 @@
   }
   .nav-profile-operator {
     font-size: 14px;
-    color: rgba(0, 0, 0, 0.8);
-    font-weight: 500;
+    color: rgba(0, 0, 0, 0.88);
+    font-weight: 400;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .nav-profile-bucket {
-    font-size: 12px;
-    color: rgba(0, 0, 0, 0.54);
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.88);
+    font-weight: 400;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -183,8 +184,9 @@
     }
     .dropdown-content-profile-name {
       padding: 6px 16px;
-      font-size: 12px;
-      color: rgba(0, 0, 0, 0.54);
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.88);
+      font-weight: 400;
       word-break: break-all;
     }
   }

@@ -1,26 +1,19 @@
 <template>
   <div class="nav-profile" @click="toggleProfileMenu">
     <div class="nav-profile-info">
-      <div class="nav-profile-operator">{{auth.user.operatorName}}</div>
-      <div class="nav-profile-bucket">{{auth.user.bucketName}}<span class="nav-profile-usage">· 已使用 {{auth.usage | digiUnit}}</span></div>
+      <div class="nav-profile-bucket">{{auth.user.bucketName}}</div>
     </div>
     <div class="dropdown-background" v-show="isShowProfileMenu" @click.stop="toggleProfileMenu"></div>
     <div class="dropdown-menu" v-show="isShowProfileMenu">
       <div class="dropdown-content" @click.stop="void 0">
         <div class="dropdown-content-profile-name">{{auth.user.operatorName}}/{{auth.user.bucketName}}</div>
-        <hr class="dropdown-divider">
-        <a class="dropdown-item" @click.prevent="openDomainSetting">
-          加速域名设置
-        </a>
+        <div class="dropdown-item" v-if="auth.usage">已使用 {{auth.usage | digiUnit}}</div>
         <hr class="dropdown-divider">
         <a class="dropdown-item" @click.prevent="openExternal(externalUrls.domain)">
           云存储服务设置
         </a>
         <a class="dropdown-item" @click.prevent="openExternal(externalUrls.createBucket)">
           创建云存储服务
-        </a>
-        <a class="dropdown-item" @click.prevent="openExternal(externalUrls.issues)">
-          报告一个问题
         </a>
         <hr class="dropdown-divider">
         <a class="dropdown-item" @click.prevent="toggleAccount">
@@ -50,10 +43,6 @@ export default {
   methods: {
     toggleProfileMenu() {
       this.isShowProfileMenu = !this.isShowProfileMenu
-    },
-    openDomainSetting() {
-      this.$store.commit('OPEN_DOMAIN_SETTING_MODAL')
-      this.isShowProfileMenu = false
     },
     toggleAccount() {
       if (this.$route.name !== 'login') {

@@ -9,7 +9,6 @@
     <move-file :key="`move:${modal.moveFile.oldPath}`" />
     <file-progress />
     <create-folder />
-    <domain-setting />
     <format-url />
     <upload-handle/>
   </div>
@@ -22,7 +21,6 @@ import CreateFolder from '@/views/modal/CreateFolder'
 import RenameFile from '@/views/modal/RenameFile'
 import MoveFile from '@/views/modal/MoveFile'
 import FileProgress from '@/views/modal/FileProgress'
-import DomainSetting from '@/views/modal/DomainSetting'
 import FormatUrl from '@/views/modal/FormatUrl'
 import UploadHandle from '@/views/modal/UploadHandle'
 
@@ -33,7 +31,6 @@ export default {
     RenameFile,
     MoveFile,
     FileProgress,
-    DomainSetting,
     FormatUrl,
     UploadHandle,
   },

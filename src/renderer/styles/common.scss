@@ -55,6 +55,23 @@ body {
   padding-left: 15px;
 }
 
+// 面包屑样式
+.breadcrumb ul {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumb li {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumb li + li::before {
+  content: '/';
+  margin-right: 4px;
+  color: #888;
+}
+
 /*
 * 覆盖 balloon-css
 */

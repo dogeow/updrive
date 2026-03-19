@@ -154,7 +154,7 @@ export default {
     copyHref(file) {
       if (!this.baseHref) {
         Message.warning('请先设置加速域名，再进行获取链接操作')
-        this.$store.commit('OPEN_DOMAIN_SETTING_MODAL')
+        this.$router.push({ name: 'settings' })
         return ''
       } else {
         const pathname = new URL(file.url).pathname

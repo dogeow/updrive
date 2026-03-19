@@ -1,4 +1,10 @@
 @import '~bulma/sass/utilities/initial-variables';
+@import '~bulma/sass/utilities/functions';
+
+// 设置面包屑分隔符为空，由我们自己控制
+$breadcrumb-separator: '';
+
+// Custom variables must be set before importing bulma
 @import '~@/styles/custom.scss';
 
 @font-face {

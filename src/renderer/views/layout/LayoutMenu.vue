@@ -20,10 +20,10 @@
         </router-link>
       </li>
       <li>
-        <a @click.prevent="openSettings">
+        <router-link :to="{name: 'settings'}" :class="{'is-active': currentRouteName === 'settings'}">
           <Icon name="icon-setting" />
           设置
-        </a>
+        </router-link>
       </li>
     </ul>
     <div class="app-info" @click="toggleAboutmodal(true)">
@@ -49,8 +49,9 @@
             <div class="brand-version">
               v{{appVersion}}
             </div>
-            <div>github: <a @click.prevent.stop="openExternal(externalUrls.repository)">{{externalUrls.repository}}</a></div>
+            <div>GitHub: <a @click.prevent.stop="openExternal(externalUrls.repository)">{{externalUrls.repository}}</a></div>
             <div>历史版本下载: <a @click.prevent.stop="openExternal(externalUrls.releases)">{{externalUrls.releases}}</a></div>
+            <div>报告一个问题: <a @click.prevent.stop="openExternal(externalUrls.issues)">GitHub Issues</a></div>
           </div>
           <div class="change-logs">
             <div class="upgrade-download-tip" v-show="upgradeUrl && latestRelease && latestRelease.version">
@@ -129,9 +130,6 @@ export default {
       openExternal(href)
       this.isShowProfileMenu = false
     },
-    openSettings() {
-      this.$store.commit('OPEN_DOMAIN_SETTING_MODAL')
-    },
     getUsage() {
       this.$store.dispatch('GET_USAGE')
     },
@@ -141,27 +139,30 @@ export default {
     },
     getUpgradeInfo() {
       const platform = os.platform() === 'darwin' || os.platform() === 'win32' ? os.platform() : 'other'
-      fetch('https://raw.githubusercontent.com/dogeow/updrive/release/upgrade.json')
-        .then(response => response.text())
-        .then(text => {
-          let data = []
-          try {
-            data = JSON.parse(text)
-          } catch (e) {
-            console.error('upgrade.json 解析失败:', e, text)
+      fetch('https://api.github.com/repos/dogeow/updrive/releases')
+        .then(response => response.json())
+        .then(releases => {
+          if (!Array.isArray(releases)) {
             this.upgradeData = []
             this.latestRelease = null
             this.upgradeUrl = ''
             return
           }
-          this.upgradeData = data
+          const latestRelease = releases[0]
+          // 转换为与原来 upgrade.json 相同的格式
+          this.upgradeData = releases.map(release => ({
+            version: release.tag_name.replace(/^v/, ''),
+            change_logs: release.body ? release.body.split('\n').filter(line => line.trim()) : [],
+          }))
           this.latestRelease = this.upgradeData[0]
-          if (this.latestRelease && semver.lt(this.appVersion, this.latestRelease.version)) {
-            this.upgradeUrl = this.latestRelease.package_urls[platform]
+          if (this.latestRelease && latestRelease && semver.lt(this.appVersion, this.latestRelease.version)) {
+            // 从 release assets 中查找对应平台的安装包
+            const asset = latestRelease.assets.find(a => a.name.includes(platform))
+            this.upgradeUrl = asset ? asset.browser_download_url : ''
           }
         })
         .catch(err => {
-          console.error('获取 upgrade.json 失败:', err)
+          console.error('获取 GitHub Releases 失败:', err)
           this.upgradeData = []
           this.latestRelease = null
           this.upgradeUrl = ''
