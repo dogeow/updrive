@@ -350,6 +350,24 @@ export default {
     }
   },
 
+  // 获取文件夹内的前几张图片作为封面
+  async getFolderCover(folderUri, limit = 4) {
+    const result = await this.getListDirInfo(folderUri)
+    const files = (result && result.data) || []
+
+    // 筛选图片文件
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
+    const imageFiles = files
+      .filter((file) => {
+        if (file.folderType === 'F') return false
+        const ext = file.filename.split('.').pop().toLowerCase()
+        return imageExtensions.includes(ext)
+      })
+      .slice(0, limit)
+
+    return imageFiles
+  },
+
   // 规范目录路径
   normalizeFolderPath(path = '') {
     const withLeadingSlash = path.startsWith('/') ? path : `/${path}`
