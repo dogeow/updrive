@@ -11,7 +11,9 @@ if (process.env.NODE_ENV !== 'development') {
 
 let mainWindow
 const winURL =
-  process.env.NODE_ENV === 'development' ? `http://localhost:9080` : `file://${__dirname}/../web/index.html`
+  process.env.NODE_ENV === 'development'
+    ? `http://localhost:9080`
+    : `file://${__dirname}/../electron/index.html`
 
 remoteMain.initialize()
 
