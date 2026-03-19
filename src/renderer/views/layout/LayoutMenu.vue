@@ -19,6 +19,12 @@
           下载列表<span v-show="downloadingNum" class="task-tag tag is-danger is-rounded">{{downloadingNum}}</span>
         </router-link>
       </li>
+      <li>
+        <a @click.prevent="openSettings">
+          <Icon name="icon-setting" />
+          设置
+        </a>
+      </li>
     </ul>
     <div class="app-info" @click="toggleAboutmodal(true)">
       <div>{{appName}} v{{appVersion}}</div>
@@ -122,6 +128,9 @@ export default {
     openExternal(href) {
       openExternal(href)
       this.isShowProfileMenu = false
+    },
+    openSettings() {
+      this.$store.commit('OPEN_DOMAIN_SETTING_MODAL')
     },
     getUsage() {
       this.$store.dispatch('GET_USAGE')
