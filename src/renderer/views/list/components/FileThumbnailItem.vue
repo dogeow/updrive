@@ -12,13 +12,28 @@
     @drop="handleDrop"
   >
     <div class="files-thumbnail-preview">
+      <!-- 文件夹显示封面图片 -->
+      <template v-if="file.folderType === 'F'">
+        <div v-if="folderCovers && folderCovers.length > 0" class="folder-cover-grid">
+          <img
+            v-for="(cover, idx) in folderCovers"
+            :key="idx"
+            class="folder-cover-image"
+            :src="getCoverThumbnailUrl(cover)"
+            :alt="cover.filename"
+          >
+        </div>
+        <i v-else class="res-icon files-thumbnail-icon" :class="getFileIconClass(file.filename, file.folderType)"></i>
+      </template>
+      <!-- 普通图片文件 -->
       <img
-        v-if="isImageFile(file)"
+        v-else-if="isImageFile(file)"
         class="files-thumbnail-image"
         :src="getThumbnailUrl(file)"
         :alt="file.filename"
         @error="$emit('thumbnail-error', file)"
       >
+      <!-- 其他文件类型 -->
       <i v-else class="res-icon files-thumbnail-icon" :class="getFileIconClass(file.filename, file.folderType)"></i>
     </div>
     <div class="files-thumbnail-name" :title="file.filename">{{file.filename}}</div>
@@ -35,9 +50,21 @@ export default {
     getListTabIndex: Function,
     isImageFile: Function,
     getThumbnailUrl: Function,
+    getFolderCover: Function,
+    folderCoverMap: Object,
     getFileIconClass: Function,
   },
+  computed: {
+    folderCovers() {
+      if (!this.file || this.file.folderType !== 'F') return []
+      return this.folderCoverMap[this.file.uri] || []
+    },
+  },
   methods: {
+    getCoverThumbnailUrl(cover) {
+      const uri = this.file.uri + cover.filename
+      return this.getThumbnailUrl({ uri })
+    },
     handleDragStart(event) {
       console.log('[Thumbnail] dragstart')
       if (!this.file || !this.file.uri) {
