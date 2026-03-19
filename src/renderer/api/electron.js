@@ -1,13 +1,12 @@
-import { ipcRenderer, shell, clipboard, webFrame } from 'electron'
-import { app, dialog, Menu, MenuItem, BrowserWindow, getCurrentWindow } from '@electron/remote'
+import { ipcRenderer, shell, clipboard, webFrame, session } from 'electron'
+import { app, Menu, MenuItem, BrowserWindow } from '@electron/remote'
 
 import Router from '@/router'
 import Store from '@/store'
 import { externalUrls } from '@/api/tool'
 
-const currentWin = getCurrentWindow()
-
-const session = currentWin.webContents.session
+// 通过 IPC 调用主进程的 dialog
+const showOpenDialog = (options) => ipcRenderer.invoke('show-open-dialog', options)
 
 const userAgent = `${process.env.npm_package_build_productName}/${process.env.npm_package_version}`
 
@@ -15,27 +14,32 @@ const userAgent = `${process.env.npm_package_build_productName}/${process.env.np
 webFrame.setVisualZoomLevelLimits(1, 1)
 
 // img 标签注入授权头
-session.webRequest.onBeforeSendHeaders(
-  {
-    urls: ['*://v0.api.upyun.com/*'],
-  },
-  (details, callback) => {
-    if (details.resourceType === 'image') {
-      const authHeaders = Store.getters.upyunClient.getHeaders(details.url)
-      callback({
-        requestHeaders: {
-          ...details.requestHeaders,
-          ...authHeaders,
-        },
-      })
-    } else {
-      callback({})
-    }
-  },
-)
+if (session) {
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    {
+      urls: ['*://v0.api.upyun.com/*'],
+    },
+    (details, callback) => {
+      if (details.resourceType === 'image') {
+        const authHeaders = Store.getters.upyunClient.getHeaders(details.url)
+        callback({
+          requestHeaders: {
+            ...details.requestHeaders,
+            ...authHeaders,
+          },
+        })
+      } else {
+        callback({})
+      }
+    },
+  )
+}
 
 // 聚焦
-export const winShow = currentWin.show
+export const winShow = () => {
+  const win = getCurrentWin()
+  return win ? win.show() : null
+}
 
 // 设置菜单
 export const setApplicationMenu = () => {
@@ -127,27 +131,24 @@ export const writeText = clipboard.writeText
 // 打开外部链接
 export const openExternal = shell.openExternal
 
+// 通过 IPC 调用主进程创建窗口
 export const windowOpen = (url, frameName, features) => {
-  let child = new BrowserWindow({ parent: currentWin, modal: true, show: false })
-  child.loadURL(url)
-  child.once('ready-to-show', () => {
-    child.show()
-  })
+  ipcRenderer.invoke('open-window', url)
 }
 
-// 创建右键菜单
+// 创建并显示右键菜单
 export const createContextmenu = ({ appendItems } = {}) => {
   const menu = new Menu()
-  for (const menuItem of appendItems) {
+  const items = appendItems || []
+  for (const menuItem of items) {
     if (!menuItem.hide) menu.append(new MenuItem(menuItem))
   }
   return menu
 }
 
-// 显示右键菜单
-export const showContextmenu = (items, opts = {}) => {
-  const menu = createContextmenu(items)
-  setTimeout(() => menu.popup(currentWin))
+export const showContextmenu = (options, opts = {}) => {
+  const menu = createContextmenu(options)
+  menu.popup()
 }
 
 // 获取版本号 (使用 package.json 中的 version 字段)
@@ -161,67 +162,49 @@ export const listenSelectAll = (callback) => ipcRenderer.on('SHORTCUT_SELECT_ALL
 
 // 上传文件
 export const uploadFileDialog = (option = {}) => {
-  return new Promise((resolve, reject) => {
-    dialog.showOpenDialog(
-      currentWin,
-      {
-        title: '选择要上传的文件',
-        buttonLabel: '上传',
-        properties: ['openFile', 'multiSelections'],
-        ...option,
-      },
-      resolve,
-    )
+  return showOpenDialog({
+    title: '选择要上传的文件',
+    buttonLabel: '上传',
+    properties: ['openFile', 'multiSelections'],
+    ...option,
+  }).then((result) => {
+    return result && result.filePaths && result.filePaths[0]
   })
 }
 
 // 上传文件夹
 export const uploadDirectoryDialog = (option = {}) => {
-  return new Promise((resolve, reject) => {
-    dialog.showOpenDialog(
-      currentWin,
-      {
-        title: '选择要上传的文件夹',
-        buttonLabel: '上传',
-        properties: ['openDirectory', 'createDirectory', 'multiSelections', 'showHiddenFiles'],
-        ...option,
-      },
-      resolve,
-    )
+  return showOpenDialog({
+    title: '选择要上传的文件夹',
+    buttonLabel: '上传',
+    properties: ['openDirectory', 'createDirectory', 'multiSelections', 'showHiddenFiles'],
+    ...option,
+  }).then((result) => {
+    return result && result.filePaths && result.filePaths[0]
   })
 }
 
 // 上传文件或文件夹（合并）
 export const uploadDialog = (option = {}) => {
-  return new Promise((resolve, reject) => {
-    dialog.showOpenDialog(
-      currentWin,
-      {
-        title: '选择要上传的文件或文件夹',
-        buttonLabel: '上传',
-        properties: ['openFile', 'openDirectory', 'multiSelections', 'showHiddenFiles'],
-        ...option,
-      },
-      resolve,
-    )
+  return showOpenDialog({
+    title: '选择要上传的文件或文件夹',
+    buttonLabel: '上传',
+    properties: ['openFile', 'openDirectory', 'multiSelections', 'showHiddenFiles'],
+    ...option,
+  }).then((result) => {
+    return result && result.filePaths && result.filePaths[0]
   })
 }
 
 // 下载
 export const downloadFileDialog = (option = {}) => {
-  return new Promise((resolve, reject) => {
-    dialog.showOpenDialog(
-      currentWin,
-      {
-        title: '下载到',
-        buttonLabel: '保存',
-        properties: ['openDirectory', 'createDirectory', 'showHiddenFiles'],
-        ...option,
-      },
-      (folderPaths) => {
-        resolve(folderPaths && folderPaths[0])
-      },
-    )
+  return showOpenDialog({
+    title: '下载到',
+    buttonLabel: '保存',
+    properties: ['openDirectory', 'createDirectory', 'showHiddenFiles'],
+    ...option,
+  }).then((result) => {
+    return result && result.filePaths && result.filePaths[0]
   })
 }
 

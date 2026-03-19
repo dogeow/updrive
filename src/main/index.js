@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 const remoteMain = require('@electron/remote/main')
 
 /**
@@ -11,9 +11,7 @@ if (process.env.NODE_ENV !== 'development') {
 
 let mainWindow
 const winURL =
-  process.env.NODE_ENV === 'development'
-    ? `http://localhost:9080`
-    : `file://${__dirname}/../electron/index.html`
+  process.env.NODE_ENV === 'development' ? `http://localhost:9080` : `file://${__dirname}/../electron/index.html`
 
 remoteMain.initialize()
 
@@ -43,6 +41,31 @@ function createWindow() {
     mainWindow = null
   })
 }
+
+// IPC handler for dialog
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  const result = await dialog.showOpenDialog(mainWindow, options)
+  return result
+})
+
+// IPC handler for opening new window
+ipcMain.handle('open-window', async (event, url) => {
+  let child = new BrowserWindow({ parent: mainWindow, modal: true, show: false })
+  child.loadURL(url)
+  child.once('ready-to-show', () => {
+    child.show()
+  })
+})
+
+// IPC handler for context menu
+ipcMain.handle('show-contextmenu', async (event, items) => {
+  const { Menu, MenuItem } = require('electron')
+  const menu = new Menu()
+  for (const menuItem of items) {
+    if (!menuItem.hide) menu.append(new MenuItem(menuItem))
+  }
+  menu.popup(mainWindow)
+})
 
 app.on('ready', createWindow)
 
