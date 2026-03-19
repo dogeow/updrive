@@ -289,11 +289,16 @@ export default {
     // 异步加载文件夹封面
     async loadFolderCover(file) {
       if (!file || !file.uri || file.folderType !== 'F') return
+      if (this.folderCoverMap[file.uri]) return // 避免重复加载
 
       try {
         const images = await this.upyunClient.getFolderCover(file.uri, 4)
         if (images && images.length > 0) {
-          this.folderCoverMap[file.uri] = images
+          // 使用新对象确保 Vue 响应式更新
+          this.folderCoverMap = {
+            ...this.folderCoverMap,
+            [file.uri]: images
+          }
         }
       } catch (err) {
         console.error('Failed to load folder cover:', err)
