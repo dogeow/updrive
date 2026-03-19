@@ -1,4 +1,3 @@
-import moment from 'moment'
 import localforage from 'localforage'
 import { remove, prepend } from 'ramda'
 
@@ -27,17 +26,17 @@ export default {
   },
 
   save() {
-    this.getAuthHistory().then(data => {
+    this.getAuthHistory().then((data) => {
       const authHistory = data
       const record = {
         bucketName: this.bucketName,
         operatorName: this.operatorName,
         password: this.password,
         key: this.key,
-        lastModified: moment().unix(),
+        lastModified: Math.floor(Date.now() / 1000),
         remark: '',
       }
-      const recordIndex = authHistory.data.findIndex(u => u.key === this.key)
+      const recordIndex = authHistory.data.findIndex((u) => u.key === this.key)
       if (~recordIndex) {
         authHistory[recordIndex] = { ...record }
       } else {
@@ -49,15 +48,15 @@ export default {
   },
 
   getAuthHistory() {
-    return localforage.getItem(this.storeKey).then(data => {
+    return localforage.getItem(this.storeKey).then((data) => {
       return data && data.version === this.initStore.version ? data : { ...this.initStore }
     })
   },
 
   deleteAuthHistory(key) {
-    return this.getAuthHistory().then(data => {
+    return this.getAuthHistory().then((data) => {
       const authHistory = data
-      authHistory.data = authHistory.data.filter(u => u.key !== key)
+      authHistory.data = authHistory.data.filter((u) => u.key !== key)
       return localforage.setItem(this.storeKey, authHistory)
     })
   },

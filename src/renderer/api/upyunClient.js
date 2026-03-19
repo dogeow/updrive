@@ -23,7 +23,6 @@ import {
   equals,
 } from 'ramda'
 import { readFileSync, createReadStream, createWriteStream, readdirSync, statSync, mkdirSync, existsSync } from 'fs'
-import Request from 'request'
 import Path from 'path'
 import mime from 'mime'
 import axios from 'axios'

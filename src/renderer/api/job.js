@@ -1,12 +1,13 @@
-import Request from 'request'
+import axios from 'axios'
 import EventEmitter from 'events'
 import Fs from 'fs'
 import { basename } from 'path'
 import { prepend, groupBy } from 'ramda'
 import localforage from 'localforage'
-import moment from 'moment'
 
 import { base64, throttle } from '@/api/tool'
+
+const now = () => Math.floor(Date.now() / 1000)
 
 // 上传和下载应该分开
 // 大量文件下性能问题未知
@@ -32,7 +33,7 @@ const Job = {
 
   async createDownloadItem(url, localPath) {
     const filename = basename(localPath)
-    const startTime = moment().unix()
+    const startTime = now()
     const id = base64(`${filename}:${startTime}`)
     const item = {
       id: id, // 唯一ID
@@ -54,7 +55,7 @@ const Job = {
 
   async createUploadItem(url, localPath) {
     const filename = decodeURIComponent(new URL(url).pathname.split('/').reverse()[0])
-    const startTime = moment().unix()
+    const startTime = now()
     const total = Fs.statSync(localPath).size
     const id = base64(`${filename}:${startTime}`)
     const item = {
@@ -77,7 +78,7 @@ const Job = {
 
   async setItem(id, item) {
     const store = await this.getStore()
-    const existedItemIndex = store.data.findIndex(_item => _item.id === id)
+    const existedItemIndex = store.data.findIndex((_item) => _item.id === id)
     if (~existedItemIndex) {
       store.data[existedItemIndex] = { ...item }
     } else {
@@ -87,7 +88,6 @@ const Job = {
   },
 
   async createDownloadTask({ url, headers, localPath }) {
-    // @TODO 并发
     return new Promise(async (resolve, reject) => {
       const item = await this.createDownloadItem(url, localPath)
 
@@ -97,51 +97,67 @@ const Job = {
 
       let percentage = 0
       const calTrans = () => {
-        const newPercentage = (item.transferred / item.total).toFixed(2)
-        if (percentage !== newPercentage) {
-          percentage = newPercentage
-          emitChange()
+        if (item.total > 0) {
+          const newPercentage = (item.transferred / item.total).toFixed(2)
+          if (percentage !== newPercentage) {
+            percentage = newPercentage
+            emitChange()
+          }
         }
       }
 
       const throttleChunk = throttle(calTrans, 100)
 
-      const request = Request({ url: url, headers: headers })
-        .on('response', response => {
-          item.total = window.parseInt(response.headers['content-length'], 10)
-          emitChange()
-        })
-        .on('data', chunk => {
-          item.transferred += chunk.length
-          if (item.transferred === item.total) {
-            calTrans()
-          } else {
-            throttleChunk()
-          }
-        })
-        .on('error', async error => {
-          item.status = this.status.error.value
-          item.errorMessage = error && error.message
-          await this.setItem(item.id, item)
-          emitChange()
-          reject(error)
-        })
+      const xhr = new XMLHttpRequest()
+      xhr.open('GET', url, true)
 
-      const localStream = Fs.createWriteStream(localPath).once('finish', async () => {
-        item.status = this.status.completed.value
-        item.endTime = moment().unix()
-        request.removeAllListeners()
-        await this.setItem(item.id, item)
-        emitChange()
-        resolve('success')
+      Object.entries(headers).forEach(([key, value]) => {
+        xhr.setRequestHeader(key, value)
       })
 
-      request.pipe(localStream)
+      xhr.responseType = 'blob'
+
+      xhr.onload = async () => {
+        if (xhr.status === 200) {
+          const blob = xhr.response
+          const buffer = await blob.arrayBuffer()
+          Fs.writeFileSync(localPath, Buffer.from(buffer))
+          item.transferred = item.total
+          item.status = this.status.completed.value
+          item.endTime = now()
+          await this.setItem(item.id, item)
+          emitChange()
+          resolve('success')
+        } else {
+          item.status = this.status.error.value
+          item.errorMessage = `HTTP ${xhr.status}`
+          await this.setItem(item.id, item)
+          emitChange()
+          reject(new Error(`HTTP ${xhr.status}`))
+        }
+      }
+
+      xhr.onerror = async (error) => {
+        item.status = this.status.error.value
+        item.errorMessage = error && error.message
+        await this.setItem(item.id, item)
+        emitChange()
+        reject(error)
+      }
+
+      xhr.onprogress = (event) => {
+        if (event.lengthComputable) {
+          item.total = event.total
+          item.transferred = event.loaded
+          calTrans()
+        }
+      }
+
+      xhr.send()
     })
   },
 
   async createUploadTask({ url, headers, localPath }) {
-    // @TODO 并发
     return new Promise(async (resolve, reject) => {
       const item = await this.createUploadItem(url, localPath)
       const emitChange = () => {
@@ -159,57 +175,52 @@ const Job = {
 
       const throttleChunk = throttle(calTrans, 100)
 
-      const readStream = Fs.createReadStream(localPath).on('data', chunk => {
-        item.transferred += chunk.length
-        if (item.transferred === item.total) {
-          calTrans()
-        } else {
-          throttleChunk()
-        }
+      const xhr = new XMLHttpRequest()
+      xhr.open('PUT', url, true)
+
+      Object.entries(headers).forEach(([key, value]) => {
+        xhr.setRequestHeader(key, value)
       })
 
-      const request = Request({
-        url: url,
-        headers: {
-          ...headers,
-          'Content-Length': item.total,
-        },
-        method: 'PUT',
-      })
-        .on('response', async response => {
-          console.log(response)
-          if (response.statusCode === 200) {
-            item.status = this.status.completed.value
-            item.endTime = moment().unix()
-            readStream.removeAllListeners()
-            await this.setItem(item.id, item)
-            emitChange()
-            resolve('success')
-          } else {
-            item.status = this.status.error.value
-            item.errorMessage = `${response.statusCode}`
-            readStream.removeAllListeners()
-            await this.setItem(item.id, item)
-            emitChange()
-            reject(`${response.statusCode}`)
-          }
-        })
-        .on('error', async error => {
-          item.status = this.status.error.value
-          item.errorMessage = error && error.message
-          readStream.removeAllListeners()
+      xhr.upload.onload = async () => {
+        if (xhr.status === 200) {
+          item.status = this.status.completed.value
+          item.endTime = now()
           await this.setItem(item.id, item)
           emitChange()
-          reject(error)
-        })
+          resolve('success')
+        } else {
+          item.status = this.status.error.value
+          item.errorMessage = `${xhr.status}`
+          await this.setItem(item.id, item)
+          emitChange()
+          reject(`${xhr.status}`)
+        }
+      }
 
-      readStream.pipe(request)
+      xhr.onerror = async (error) => {
+        item.status = this.status.error.value
+        item.errorMessage = error && error.message
+        await this.setItem(item.id, item)
+        emitChange()
+        reject(error)
+      }
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          item.transferred = event.loaded
+          throttleChunk()
+        }
+      }
+
+      const fileContent = Fs.readFileSync(localPath)
+      xhr.send(fileContent)
     })
   },
 
   async deleteJob({ connectType, id }) {
     const store = await this.getStore()
-    store.data = store.data.filter(item => {
+    store.data = store.data.filter((item) => {
       if (id) {
         return item.id !== id
       }

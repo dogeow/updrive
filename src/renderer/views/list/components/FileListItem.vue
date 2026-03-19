@@ -7,10 +7,10 @@
     @dblclick.stop="file && file.uri && $emit('dblclick-item', file.uri)"
     @contextmenu.prevent="$emit('contextmenu-item', file)"
     :draggable="file && file.uri"
-    @dragstart.native="handleDragStart"
-    @dragover.native="handleDragOver"
-    @dragleave.native="handleDragLeave"
-    @drop.native="handleDrop"
+    @dragstart="handleDragStart"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop="handleDrop"
   >
     <div class="name file-info-item">
       <i class="res-icon" :class="getFileIconClass(file.filename, file.folderType)"></i>{{file.filename}}
@@ -62,7 +62,7 @@ export default {
         event.dataTransfer.dropEffect = 'move'
       }
     },
-    handleDragLeave(event) {
+    handleDragLeave(_event) {
       // 可以添加视觉反馈
     },
     handleDrop(event) {

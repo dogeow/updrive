@@ -2,13 +2,12 @@ import { replace, compose, pipe, split, filter, reverse, sort, identity } from '
 import Crypto from 'crypto'
 import Path from 'path'
 import { URL } from 'url'
-import Moment from 'moment'
 import { existsSync } from 'fs'
 import Message from '@/api/message'
 
 const userAgent = `${process.env.npm_package_build_productName}/${process.env.npm_package_version}`
 
-export const errorHandler = error => {
+export const errorHandler = (error) => {
   if (error && error.response && error.response.data && error.response.data.msg) {
     Message.error(error.response.data.msg)
   } else {
@@ -17,21 +16,16 @@ export const errorHandler = error => {
   throw error
 }
 
-export const mandatory = parameter => {
+export const mandatory = (parameter) => {
   throw new Error(parameter ? `Missing parameter ${parameter}` : 'Missing parameter')
 }
 
-export const md5sum = data => {
-  return Crypto.createHash('md5')
-    .update(data, 'utf8')
-    .digest('hex')
+export const md5sum = (data) => {
+  return Crypto.createHash('md5').update(data, 'utf8').digest('hex')
 }
 
 export const hmacSha1 = (secret = mandatory('secret'), data = mandatory('data')) => {
-  return Crypto.createHmac('sha1', secret)
-    .update(data, 'utf8')
-    .digest()
-    .toString('base64')
+  return Crypto.createHmac('sha1', secret).update(data, 'utf8').digest().toString('base64')
 }
 
 export const standardUri = (path = '') => {
@@ -85,25 +79,44 @@ export const throttle = (fn, ms) => {
 }
 
 export const sleep = (ms = 0) => {
-  return new Promise(r => setTimeout(r, ms))
+  return new Promise((r) => setTimeout(r, ms))
 }
 
 export const isDir = (path = '') => {
   return /\/$/.test(path)
 }
 
-export const timestamp = (input, pattern = 'YYYY-MM-DD HH:mm:ss') =>
-  isNaN(input) ? input : Moment.unix(input).format(pattern)
+export const timestamp = (input, pattern = 'YYYY-MM-DD HH:mm:ss') => {
+  if (isNaN(input)) return input
+  const date = new Date(input * 1000)
+  const pad = (n) => String(n).padStart(2, '0')
+  const year = date.getFullYear()
+  const month = pad(date.getMonth() + 1)
+  const day = pad(date.getDate())
+  const hours = pad(date.getHours())
+  const minutes = pad(date.getMinutes())
+  const seconds = pad(date.getSeconds())
+  return pattern
+    .replace('YYYY', year)
+    .replace('MM', month)
+    .replace('DD', day)
+    .replace('HH', hours)
+    .replace('mm', minutes)
+    .replace('ss', seconds)
+}
 
-export const digiUnit = input => {
+export const digiUnit = (input) => {
   if (input === '-') return ''
   if (isNaN(input)) return input
   if (+input === 0) return '0 B'
   const getSizes = () => ['B', 'KB', 'MB', 'GB', 'TB']
-  const getByte = input => Number(Math.abs(input))
-  const getIndex = byte => Math.floor(Math.log(byte) / Math.log(1024))
-  const getUnitIndex = (sizes = []) => index => (index > sizes.length - 1 ? sizes.length - 1 : index)
-  const getResult = sizes => byte => index => `${(byte / Math.pow(1024, index)).toFixed(1)} ${sizes[index]}`
+  const getByte = (input) => Number(Math.abs(input))
+  const getIndex = (byte) => Math.floor(Math.log(byte) / Math.log(1024))
+  const getUnitIndex =
+    (sizes = []) =>
+    (index) =>
+      index > sizes.length - 1 ? sizes.length - 1 : index
+  const getResult = (sizes) => (byte) => (index) => `${(byte / Math.pow(1024, index)).toFixed(1)} ${sizes[index]}`
   return compose(
     compose(compose(getResult, getSizes)(), getByte)(input),
     compose(compose(getUnitIndex, getSizes)(), getIndex, getByte),
@@ -115,8 +128,8 @@ export const percent = (input, precision = 0) => {
   return `${num} %`
 }
 
-export const uploadStatus = input => {
-  return { '0': '未开始', '1': '进行中', '2': '已完成', '-1': '出错', '-2': '已取消' }[input]
+export const uploadStatus = (input) => {
+  return { 0: '未开始', 1: '进行中', 2: '已完成', '-1': '出错', '-2': '已取消' }[input]
 }
 
 // 递归获取不重复名字
@@ -124,7 +137,10 @@ export const getLocalName = (fileName = '', init = true) => {
   if (!existsSync(fileName)) return fileName
   const match = /\((\d+)\)$/
   if (init && match.test(fileName)) {
-    return getLocalName(fileName.replace(match, (match, p1) => `(${parseInt(p1) + 1})`), false)
+    return getLocalName(
+      fileName.replace(match, (match, p1) => `(${parseInt(p1) + 1})`),
+      false,
+    )
   } else {
     return getLocalName(fileName + '(1)', false)
   }
@@ -152,7 +168,7 @@ export const getFileTypeFromName = (filename = '', folderType) => {
     markdown: ['.md', '.markdown'],
   }
   const extensionName = Path.extname(filename).toLocaleLowerCase()
-  return Object.keys(fileTypeMap).find(key => {
+  return Object.keys(fileTypeMap).find((key) => {
     return fileTypeMap[key].includes(extensionName)
   })
 }
@@ -213,6 +229,5 @@ export const listSort = (data = [], key, isReverse) => {
 }
 
 export const createImage = () => {
-
   console.log('创建图片')
 }

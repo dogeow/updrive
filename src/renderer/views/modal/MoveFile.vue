@@ -1,5 +1,5 @@
 <template>
-  <div class="modal modal-md basic-modal is-active" v-show="modal.moveFile.show" tabindex="1" @keyup.esc="close" @keyup.enter="submit">
+  <div class="modal modal-md basic-modal is-active" v-show="modal.moveFile.show" ref="modalRoot" tabindex="1" @keyup.esc="close" @keyup.enter="submit">
     <div class="modal-background"></div>
     <div class="modal-content">
       <div class="modal-header">
@@ -9,19 +9,8 @@
         </span>
       </div>
       <div class="modal-body">
-        <p style="margin-bottom: 10px;">请选择目标目录：</p>
-        <div class="move-file-toolbar">
-          <button class="button is-small" type="button" @click="jumpTo('/')">根目录</button>
-          <button class="button is-small" type="button" @click="goUp" :disabled="browsePath === '/'">上一级</button>
-        </div>
         <div class="move-file-breadcrumb">
-          <a v-if="!pathSegments.length" @click.prevent="jumpTo('/')">/</a>
-          <template v-else>
-            <template v-for="(segment, index) in pathSegments">
-              <span v-if="index > 0" :key="`${segment.path}-sep`"> / </span>
-              <a :key="segment.path" @click.prevent="jumpTo(segment.path)">{{ segment.displayName }}</a>
-            </template>
-          </template>
+          <Breadcrumb :pathArray="pathArray" :goto="goto" />
         </div>
         <div class="move-file-folder-browser">
           <spinner v-if="isLoading" />
@@ -64,6 +53,7 @@ import { mapState } from 'vuex'
 import Icon from '@/components/Icon'
 import Message from '@/api/message'
 import Spinner from '@/components/Spinner'
+import Breadcrumb from '@/views/layout/components/Breadcrumb.vue'
 import { getFileIconClass } from '@/api/tool'
 
 export default {
@@ -71,6 +61,7 @@ export default {
   components: {
     Icon,
     Spinner,
+    Breadcrumb,
   },
   data() {
     return {
@@ -86,13 +77,8 @@ export default {
   },
   computed: {
     ...mapState(['modal', 'auth']),
-    pathSegments() {
-      const parts = this.browsePath.split('/').filter(Boolean)
-      return parts.map((name, index) => ({
-        name,
-        displayName: index === 0 ? `/${name}` : name,
-        path: `/${parts.slice(0, index + 1).join('/')}/`,
-      }))
+    pathArray() {
+      return this.browsePath.split('/').filter(p => p && p.trim())
     },
     targetPreviewPath() {
       const dir = this.normalizeDirPath(this.browsePath)
@@ -107,6 +93,10 @@ export default {
   },
   methods: {
     getFileIconClass,
+    goto(index) {
+      const remotePath = index === undefined ? '/' : '/' + this.pathArray.slice(0, index + 1).join('/') + '/'
+      return this.jumpTo(remotePath)
+    },
     normalizeItemPath(path = '') {
       const value = path.trim()
       if (!value) return ''
@@ -170,12 +160,6 @@ export default {
       this.browsePath = nextPath
       return this.loadFolders(nextPath)
     },
-    goUp() {
-      if (this.browsePath === '/') return false
-      const parts = this.browsePath.split('/').filter(Boolean)
-      const parentPath = parts.length <= 1 ? '/' : `/${parts.slice(0, -1).join('/')}/`
-      return this.jumpTo(parentPath)
-    },
     openFolder(targetPath) {
       return this.jumpTo(targetPath)
     },
@@ -227,17 +211,16 @@ export default {
   },
   created() {
     this.initializeFromOldPath()
+    this.$nextTick(() => {
+      if (this.$refs.modalRoot) {
+        this.$refs.modalRoot.focus()
+      }
+    })
   },
 }
 </script>
 
 <style scoped lang="scss">
-.move-file-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
 .move-file-breadcrumb {
   margin-bottom: 10px;
   font-size: 12px;
