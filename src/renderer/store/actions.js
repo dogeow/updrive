@@ -100,6 +100,40 @@ export default {
       .then(() => dispatch({ type: Types.REFRESH_LIST, spinner: false }))
       .catch(errorHandler)
   },
+  // 移动文件到指定目录（通过拖拽）
+  [Types.MOVE_FILES]({ getters, commit, dispatch }, { sourcePath, targetPath } = {}) {
+    console.log('[actions.js] MOVE_FILES called:', sourcePath, '->', targetPath)
+    // 判断源文件是文件还是文件夹
+    const isFolder = sourcePath.endsWith('/')
+
+    if (isFolder) {
+      // 移动文件夹
+      return getters.upyunClient
+        .renameFolder(sourcePath, targetPath)
+        .then((result) => {
+          if (result.success) {
+            Message.success('移动成功')
+          } else {
+            Message.warning(`移动失败：${result.errors.length} 项`)
+          }
+        })
+        .then(() => dispatch({ type: Types.REFRESH_LIST, spinner: false }))
+        .catch(errorHandler)
+    }
+
+    // 移动文件
+    return getters.upyunClient
+      .moveFile(sourcePath, targetPath)
+      .then((result) => {
+        if (result.success) {
+          Message.success('移动成功')
+        } else {
+          Message.warning('移动失败')
+        }
+      })
+      .then(() => dispatch({ type: Types.REFRESH_LIST, spinner: false }))
+      .catch(errorHandler)
+  },
   // 下载文件
   [Types.DOWNLOAD_FILES]({ getters, commit, dispatch }, { destPath, downloadPath } = {}) {
     return (
