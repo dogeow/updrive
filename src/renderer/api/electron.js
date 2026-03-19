@@ -168,7 +168,7 @@ export const uploadFileDialog = (option = {}) => {
     properties: ['openFile', 'multiSelections'],
     ...option,
   }).then((result) => {
-    return result && result.filePaths && result.filePaths[0]
+    return result && result.filePaths ? result.filePaths : []
   })
 }
 
@@ -180,7 +180,7 @@ export const uploadDirectoryDialog = (option = {}) => {
     properties: ['openDirectory', 'createDirectory', 'multiSelections', 'showHiddenFiles'],
     ...option,
   }).then((result) => {
-    return result && result.filePaths && result.filePaths[0]
+    return result && result.filePaths ? result.filePaths : []
   })
 }
 
@@ -192,7 +192,7 @@ export const uploadDialog = (option = {}) => {
     properties: ['openFile', 'openDirectory', 'multiSelections', 'showHiddenFiles'],
     ...option,
   }).then((result) => {
-    return result && result.filePaths && result.filePaths[0]
+    return result && result.filePaths ? result.filePaths : []
   })
 }
 

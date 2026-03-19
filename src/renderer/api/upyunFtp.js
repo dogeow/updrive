@@ -1,24 +1,4 @@
-import {
-  path,
-  split,
-  map,
-  zipObj,
-  compose,
-  objOf,
-  ifElse,
-  isEmpty,
-  assoc,
-  replace,
-  converge,
-  always,
-  prop,
-  concat,
-  identity,
-  __,
-  equals,
-} from 'ramda'
-import Moment from 'moment'
-import Ftp from 'ftp'
+import { Client } from 'basic-ftp'
 
 export default {
   setup(bucketName, operatorName, password) {
@@ -28,24 +8,12 @@ export default {
       } catch (err) {}
     }
 
-    const ftpClient = new Ftp()
+    const ftpClient = new Client()
     let isReady = false
 
-    ftpClient.on('ready', () => {
-      isReady = true
-      console.info('--------------- ftp 连接成功 ---------------')
-    })
-    ftpClient.on('close', () => {
+    const markClosed = () => {
       isReady = false
-      console.info('--------------- ftp 已关闭 ---------------')
-    })
-    ftpClient.on('end', () => {
-      isReady = false
-    })
-    ftpClient.on('error', err => {
-      isReady = false
-      console.error('FTP 错误:', (err && err.message) || err)
-    })
+    }
 
     const withTimeout = (promise, timeoutMs, message) => {
       return new Promise((resolve, reject) => {
@@ -69,11 +37,16 @@ export default {
       return new Promise(resolve => setTimeout(resolve, ms))
     }
 
+    const setTimeoutMs = timeoutMs => {
+      ftpClient.ftp.timeout = timeoutMs
+    }
+
     const closeClient = () => {
-      isReady = false
+      markClosed()
       try {
-        ftpClient.end()
+        ftpClient.close()
       } catch (err) {}
+      console.info('--------------- ftp 已关闭 ---------------')
     }
 
     this.close = () => {
@@ -81,49 +54,36 @@ export default {
     }
 
     const connect = async (timeoutMs = 10000) => {
-      if (isReady) {
+      if (isReady && !ftpClient.closed) {
         return Promise.resolve()
       }
 
-      return withTimeout(new Promise((resolve, reject) => {
-          const onReady = () => {
-            cleanup()
-            resolve()
-          }
-          const onError = err => {
-            cleanup()
-            reject(err || new Error('FTP 连接失败'))
-          }
+      setTimeoutMs(timeoutMs)
 
-          const cleanup = () => {
-            ftpClient.removeListener('ready', onReady)
-            ftpClient.removeListener('error', onError)
-          }
-
-          ftpClient.once('ready', onReady)
-          ftpClient.once('error', onError)
-
-          try {
-            ftpClient.connect({
-              host: 'v0.ftp.upyun.com',
-              user: `${operatorName}/${bucketName}`,
-              password: password,
-              keepalive: 10000,
-            })
-          } catch (err) {
-            cleanup()
-            reject(err)
-          }
-        }), timeoutMs, 'FTP 连接超时')
+      return withTimeout(
+        ftpClient
+          .access({
+            host: 'v0.ftp.upyun.com',
+            user: `${operatorName}/${bucketName}`,
+            password,
+          })
+          .then(() => {
+            isReady = true
+            console.info('--------------- ftp 连接成功 ---------------')
+          })
+          .catch(err => {
+            markClosed()
+            console.error('FTP 错误:', (err && err.message) || err)
+            throw err || new Error('FTP 连接失败')
+          }),
+        timeoutMs,
+        'FTP 连接超时',
+      )
     }
 
     const renamePromise = (oldPath, newPath, timeoutMs = 15000) => {
-      return withTimeout(new Promise((resolve, reject) => {
-          ftpClient.rename(oldPath, newPath, err => {
-            if (err) return reject(err)
-            return resolve()
-          })
-        }), timeoutMs, `FTP 路径修改超时: ${oldPath} => ${newPath}`)
+      setTimeoutMs(timeoutMs)
+      return withTimeout(ftpClient.rename(oldPath, newPath), timeoutMs, `FTP 路径修改超时: ${oldPath} => ${newPath}`)
     }
 
     this.renameFile = async (oldPath, newPath, options = {}) => {

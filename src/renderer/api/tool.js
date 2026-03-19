@@ -70,7 +70,7 @@ export const getAuthorizationHeader = ({
   }
 }
 
-export const base64 = (str = '') => new Buffer(str).toString('base64')
+export const base64 = (str = '') => Buffer.from(str).toString('base64')
 
 // 以固定间隔时间立即执行的 throttle,和普通的不一样
 export const throttle = (fn, ms) => {
