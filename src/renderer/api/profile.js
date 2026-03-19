@@ -2,7 +2,7 @@ import localforage from 'localforage'
 
 const Profile = {
   initStore: {
-    version: 0.2,
+    version: 0.3,
     data: {
       domain: '',
       urlCopyType: 'url',
@@ -10,6 +10,7 @@ const Profile = {
         isReverse: true,
         key: 'lastModified',
       },
+      loadFolderCover: true, // 是否在缩略图模式下加载文件夹封面
     },
   },
 
@@ -47,6 +48,9 @@ const Profile = {
     }
     if (oldData.sortInfo !== undefined) {
       data.sortInfo = oldData.sortInfo
+    }
+    if (oldData.loadFolderCover !== undefined) {
+      data.loadFolderCover = oldData.loadFolderCover
     }
     return await localforage.setItem(this.storeKey, { ...this.initStore, data })
   },

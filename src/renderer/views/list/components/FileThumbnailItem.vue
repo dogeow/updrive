@@ -56,8 +56,15 @@ export default {
   },
   computed: {
     folderCovers() {
+      console.log('[FileThumbnailItem] folderCovers called, file:', this.file ? this.file.uri : 'none')
       if (!this.file || this.file.folderType !== 'F') return []
-      return this.folderCoverMap[this.file.uri] || []
+      // 调用 getFolderCover 触发加载
+      if (this.getFolderCover) {
+        this.getFolderCover(this.file)
+      }
+      const covers = this.folderCoverMap[this.file.uri] || []
+      console.log('[FileThumbnailItem] folderCovers:', covers.length)
+      return covers
     },
   },
   methods: {

@@ -191,6 +191,9 @@ export default {
     listViewMode() {
       return path(['profile', 'data', 'listViewMode'], this) || 'list'
     },
+    loadFolderCoverEnabled() {
+      return path(['profile', 'data', 'loadFolderCover'], this) !== false
+    },
     isThumbnailMode() {
       return this.listViewMode === 'thumbnail'
     },
@@ -277,6 +280,9 @@ export default {
       // 如果不是文件夹，返回空
       if (!file || file.folderType !== 'F') return []
 
+      // 如果未启用文件夹封面功能，直接返回空
+      if (!this.loadFolderCoverEnabled) return []
+
       // 如果已有缓存，直接返回
       if (this.folderCoverMap[file.uri]) {
         return this.folderCoverMap[file.uri]
@@ -288,20 +294,27 @@ export default {
     },
     // 异步加载文件夹封面
     async loadFolderCover(file) {
+      console.log('[loadFolderCover] file:', file)
       if (!file || !file.uri || file.folderType !== 'F') return
-      if (this.folderCoverMap[file.uri]) return // 避免重复加载
+      if (this.folderCoverMap[file.uri]) {
+        console.log('[loadFolderCover] already loaded:', file.uri)
+        return
+      }
 
       try {
+        console.log('[loadFolderCover] fetching:', file.uri)
         const images = await this.upyunClient.getFolderCover(file.uri, 4)
+        console.log('[loadFolderCover] images:', images)
         if (images && images.length > 0) {
           // 使用新对象确保 Vue 响应式更新
           this.folderCoverMap = {
             ...this.folderCoverMap,
             [file.uri]: images
           }
+          console.log('[loadFolderCover] set cover for:', file.uri)
         }
       } catch (err) {
-        console.error('Failed to load folder cover:', err)
+        console.error('[loadFolderCover] Failed to load folder cover:', err)
       }
     },
     onThumbnailError(file = {}) {
