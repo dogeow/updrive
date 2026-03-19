@@ -10,6 +10,8 @@
         :getListTabIndex="getListTabIndex"
         :isImageFile="isImageFile"
         :getThumbnailUrl="getThumbnailUrl"
+        :getFolderCover="getFolderCover"
+        :folderCoverMap="folderCoverMap"
         :getFileIconClass="getFileIconClass"
         @select-item="handleSelectItem"
         @dblclick-item="handleDblclickItem"
@@ -33,6 +35,8 @@ export default {
     getListTabIndex: Function,
     isImageFile: Function,
     getThumbnailUrl: Function,
+    getFolderCover: Function,
+    folderCoverMap: Object,
     getFileIconClass: Function,
   },
   methods: {
