@@ -10,6 +10,7 @@ const BabiliWebpackPlugin = require('babili-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const ExtractTextPlugin = require('extract-text-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const { VueLoaderPlugin } = require('vue-loader')
 
 /**
  * List of node_modules to include in webpack bundle
@@ -36,6 +37,20 @@ let rendererConfig = {
         }),
       },
       {
+        test: /\.scss$/,
+        use: ExtractTextPlugin.extract({
+          fallback: 'vue-style-loader',
+          use: ['css-loader', 'sass-loader'],
+        }),
+      },
+      {
+        test: /\.sass$/,
+        use: ExtractTextPlugin.extract({
+          fallback: 'vue-style-loader',
+          use: ['css-loader', 'sass-loader?indentedSyntax=1'],
+        }),
+      },
+      {
         test: /\.html$/,
         use: 'vue-html-loader',
       },
@@ -54,6 +69,7 @@ let rendererConfig = {
           loader: 'vue-loader',
           options: {
             extractCSS: process.env.NODE_ENV === 'production',
+            compiler: require('vue-template-compiler'),
             loaders: {
               sass: 'vue-style-loader!css-loader!sass-loader?indentedSyntax=1',
               scss: 'vue-style-loader!css-loader!sass-loader',
@@ -96,6 +112,7 @@ let rendererConfig = {
     __filename: process.env.NODE_ENV !== 'production',
   },
   plugins: [
+    new VueLoaderPlugin(),
     new ExtractTextPlugin('styles.css'),
     new HtmlWebpackPlugin({
       filename: 'index.html',
