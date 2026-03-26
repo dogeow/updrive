@@ -4,6 +4,21 @@
       <Icon name="icon-files" />
       <span class="op-label">新建文件夹</span>
     </div>
+    <div class="list-operation-search">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="搜索当前目录..."
+        :value="searchKeyword"
+        @input="$emit('search', $event.target.value)"
+      />
+      <Icon
+        v-if="searchKeyword"
+        name="icon-delete"
+        class="search-clear"
+        @click.native="$emit('search', '')"
+      />
+    </div>
     <div class="list-operation-item" @click="$emit('upload-all')">
       <Icon name="icon-uploads" />
       <span class="op-label">上传</span>
@@ -77,6 +92,7 @@ export default {
     isViewDetail: Boolean,
     isListMode: Boolean,
     isThumbnailMode: Boolean,
+    searchKeyword: String,
   },
 }
 </script>

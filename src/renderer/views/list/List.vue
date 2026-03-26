@@ -19,6 +19,8 @@
         @download="() => selected.length && downloadFile()"
         @detail="() => isViewDetail ? toggleShowViewDetail() : getFileDetail()"
         @set-list-view-mode="setListViewMode"
+      @search="handleSearch"
+      :searchKeyword="searchKeyword"
       />
       <div
         class="list"
@@ -178,11 +180,23 @@ export default {
       showDeleteModal: false,
       thumbnailFallbackMap: {},
       folderCoverMap: {}, // 文件夹封面缓存
+      searchKeyword: '', // 搜索关键词
     }
   },
   computed: {
     listData() {
-      return listSort(this.list.dirInfo.data, this.sortInfo.key, this.sortInfo.isReverse)
+      const data = this.searchKeyword
+        ? this.filteredListData
+        : this.list.dirInfo.data
+      return listSort(data, this.sortInfo.key, this.sortInfo.isReverse)
+    },
+    filteredListData() {
+      if (!this.searchKeyword) return this.list.dirInfo.data
+      const keyword = this.searchKeyword.toLowerCase()
+      return this.list.dirInfo.data.filter(item => {
+        const filename = item.filename || ''
+        return filename.toLowerCase().includes(keyword)
+      })
     },
     sortInfo() {
       return path(['profile', 'data', 'sortInfo'], this) || {}
@@ -256,6 +270,7 @@ export default {
   watch: {
     currentDirPath() {
       this.thumbnailFallbackMap = {}
+      this.searchKeyword = '' // 切换目录时清空搜索关键词
     },
     'profile.data.loadFolderCover': function() {
       // 当设置变化时，清空文件夹封面缓存
@@ -269,6 +284,9 @@ export default {
       this.$store.dispatch('SET_PROFILE_STORE', {
         data: { listViewMode: mode },
       })
+    },
+    handleSearch(keyword) {
+      this.searchKeyword = keyword
     },
     isImageFile(file = {}) {
       return getFileTypeFromName(file.filename, file.folderType) === 'image'
@@ -396,11 +414,20 @@ export default {
       this.$refs.listView.focus()
     },
     keydown($event) {
-      const { ctrlKey, key, shiftKey, altKey } = $event
+      const { ctrlKey, metaKey, key, shiftKey, altKey, target } = $event
+      // 当焦点在输入框、textarea 或可编辑元素时，不拦截快捷键
+      const tagName = target && target.tagName ? target.tagName.toLowerCase() : ''
+      const isInputElement = tagName === 'input' || tagName === 'textarea' || target.isContentEditable
+      const isModifierKey = ctrlKey || metaKey // 支持 Ctrl (Windows/Linux) 和 Command (macOS)
       const uriData = pluck('uri', this.listData)
       const selectUri = selected => this.$store.commit({ type: 'SET_SELECT_LIST', selected: selected })
-      if (ctrlKey && !shiftKey && key === 'a') {
+      if (isModifierKey && !shiftKey && (key === 'a' || key === 'A') && !isInputElement) {
+        $event.preventDefault()
         selectUri(uriData)
+      }
+      // 如果焦点在输入框内，不执行其他快捷键（让输入框自带功能正常工作）
+      if (isInputElement) {
+        return
       }
       // 滚动
       if (!ctrlKey && !shiftKey && (key === 'j' || key === 'ArrowDown')) {
