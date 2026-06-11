@@ -1,4 +1,4 @@
-import localforage from 'localforage'
+import localforage from '@/api/storage'
 
 const Profile = {
   initStore: {

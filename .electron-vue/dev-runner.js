@@ -4,10 +4,11 @@ const chalk = require('chalk')
 const electron = require('electron')
 const path = require('path')
 const { say } = require('cfonts')
-const { spawn } = require('child_process')
+const { spawn, execSync } = require('child_process')
 const webpack = require('webpack')
 const WebpackDevServer = require('webpack-dev-server')
 const webpackHotMiddleware = require('webpack-hot-middleware')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 const mainConfig = require('./webpack.main.config')
 const rendererConfig = require('./webpack.renderer.config')
@@ -15,6 +16,29 @@ const rendererConfig = require('./webpack.renderer.config')
 let electronProcess = null
 let manualRestart = false
 let hotMiddleware
+
+function freePort (port) {
+  try {
+    const output = execSync(`lsof -ti tcp:${port}`, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore']
+    }).trim()
+
+    if (!output) {
+      return
+    }
+
+    output.split(/\s+/).filter(Boolean).forEach((pid) => {
+      try {
+        process.kill(Number(pid), 'SIGKILL')
+      } catch (err) {}
+    })
+
+    console.log(chalk.yellow(`  Freed port ${port} from stale process`))
+  } catch (err) {
+    // port is free
+  }
+}
 
 function logStats (proc, data) {
   let log = ''
@@ -43,47 +67,56 @@ function startRenderer () {
     rendererConfig.entry.renderer = [path.join(__dirname, 'dev-client')].concat(rendererConfig.entry.renderer)
 
     const compiler = webpack(rendererConfig)
-    hotMiddleware = webpackHotMiddleware(compiler, { 
-      log: false, 
-      heartbeat: 2500 
+    hotMiddleware = webpackHotMiddleware(compiler, {
+      log: false,
+      heartbeat: 2500
     })
 
-    compiler.plugin('compilation', compilation => {
-      compilation.plugin('html-webpack-plugin-after-emit', (data, cb) => {
+    compiler.hooks.compilation.tap('dev-runner-html', (compilation) => {
+      HtmlWebpackPlugin.getHooks(compilation).afterEmit.tapAsync('dev-runner-html', (data, cb) => {
         hotMiddleware.publish({ action: 'reload' })
-        cb()
+        cb(null, data)
       })
     })
 
-    compiler.plugin('done', stats => {
+    compiler.hooks.done.tap('dev-runner-renderer', stats => {
       logStats('Renderer', stats)
     })
 
-    const server = new WebpackDevServer(
-      compiler,
-      {
-        contentBase: path.join(__dirname, '../'),
-        quiet: true,
-        before (app, ctx) {
-          app.use(hotMiddleware)
-          ctx.middleware.waitUntilValid(() => {
-            resolve()
-          })
-        }
+    let resolved = false
+    compiler.hooks.done.tap('dev-runner-ready', () => {
+      if (!resolved) {
+        resolved = true
+        resolve()
       }
-    )
+    })
 
-    server.listen(9080)
+    const server = new WebpackDevServer({
+      port: 9080,
+      hot: false,
+      static: {
+        directory: path.join(__dirname, '../')
+      },
+      devMiddleware: {
+        publicPath: '/'
+      },
+      setupMiddlewares: (middlewares, devServer) => {
+        devServer.app.use(hotMiddleware)
+        return middlewares
+      }
+    }, compiler)
+
+    server.start().catch(reject)
   })
 }
 
 function startMain () {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     mainConfig.entry.main = [path.join(__dirname, '../src/main/index.dev.js')].concat(mainConfig.entry.main)
 
     const compiler = webpack(mainConfig)
 
-    compiler.plugin('watch-run', (compilation, done) => {
+    compiler.hooks.watchRun.tapAsync('dev-runner-main', (compilation, done) => {
       logStats('Main', chalk.white.bold('compiling...'))
       hotMiddleware.publish({ action: 'compiling' })
       done()
@@ -114,7 +147,7 @@ function startMain () {
 }
 
 function startElectron () {
-  electronProcess = spawn(electron, ['--inspect=5858', path.join(__dirname, '../dist/electron/main.js')])
+  electronProcess = spawn(electron, [path.join(__dirname, '../dist/electron/main.js')])
 
   electronProcess.stdout.on('data', data => {
     electronLog(data, 'blue')
@@ -165,13 +198,20 @@ function greeting () {
 
 function init () {
   greeting()
+  freePort(9080)
 
   Promise.all([startRenderer(), startMain()])
     .then(() => {
       startElectron()
     })
     .catch(err => {
-      console.error(err)
+      if (err && err.code === 'EADDRINUSE') {
+        console.error(chalk.red('\n  Port 9080 is already in use.'))
+        console.error(chalk.yellow('  Run: lsof -ti:9080 | xargs kill -9\n'))
+      } else {
+        console.error(err)
+      }
+      process.exit(1)
     })
 }
 

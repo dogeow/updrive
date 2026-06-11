@@ -1,3 +1,4 @@
+import '@/api/storage'
 import Vue from 'vue'
 import iviewCSS from 'iview/dist/styles/iview.css'
 import balloonCss from 'balloon-css/balloon.css'

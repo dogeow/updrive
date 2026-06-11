@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { IPC_CHANNELS } from '../shared/ipcChannels'
 const remoteMain = require('@electron/remote/main')
 
 /**
@@ -43,13 +44,13 @@ function createWindow() {
 }
 
 // IPC handler for dialog
-ipcMain.handle('show-open-dialog', async (event, options) => {
+ipcMain.handle(IPC_CHANNELS.SHOW_OPEN_DIALOG, async (event, options) => {
   const result = await dialog.showOpenDialog(mainWindow, options)
   return result
 })
 
 // IPC handler for opening new window
-ipcMain.handle('open-window', async (event, url) => {
+ipcMain.handle(IPC_CHANNELS.OPEN_WINDOW, async (event, url) => {
   let child = new BrowserWindow({ parent: mainWindow, modal: true, show: false })
   child.loadURL(url)
   child.once('ready-to-show', () => {
@@ -58,7 +59,7 @@ ipcMain.handle('open-window', async (event, url) => {
 })
 
 // IPC handler for context menu
-ipcMain.handle('show-contextmenu', async (event, items) => {
+ipcMain.handle(IPC_CHANNELS.SHOW_CONTEXT_MENU, async (event, items) => {
   const { Menu, MenuItem } = require('electron')
   const menu = new Menu()
   for (const menuItem of items) {

@@ -1,4 +1,4 @@
-import localforage from 'localforage'
+import localforage from '@/api/storage'
 import { remove, prepend } from 'ramda'
 
 import UpyunClient from '@/api/upyunClient'
@@ -48,7 +48,14 @@ export default {
   },
 
   getAuthHistory() {
-    return localforage.getItem(this.storeKey).then((data) => {
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('storage timeout')), 5000)
+    })
+
+    return Promise.race([
+      localforage.getItem(this.storeKey),
+      timeout,
+    ]).then((data) => {
       return data && data.version === this.initStore.version ? data : { ...this.initStore }
     })
   },

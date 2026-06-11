@@ -4,9 +4,10 @@ import { app, Menu, MenuItem, BrowserWindow } from '@electron/remote'
 import Router from '@/router'
 import Store from '@/store'
 import { externalUrls } from '@/api/tool'
+import { IPC_CHANNELS } from '../../shared/ipcChannels'
 
 // 通过 IPC 调用主进程的 dialog
-const showOpenDialog = (options) => ipcRenderer.invoke('show-open-dialog', options)
+const showOpenDialog = (options) => ipcRenderer.invoke(IPC_CHANNELS.SHOW_OPEN_DIALOG, options)
 
 const userAgent = `${process.env.npm_package_build_productName}/${process.env.npm_package_version}`
 
@@ -86,6 +87,17 @@ export const setApplicationMenu = () => {
           label: '剪切',
           role: 'cut',
         },
+        {
+          type: 'separator',
+        },
+        {
+          label: '全选',
+          role: 'selectAll',
+        },
+        {
+          label: '删除',
+          role: 'delete',
+        },
       ],
     },
     {
@@ -133,7 +145,7 @@ export const openExternal = shell.openExternal
 
 // 通过 IPC 调用主进程创建窗口
 export const windowOpen = (url, frameName, features) => {
-  ipcRenderer.invoke('open-window', url)
+  ipcRenderer.invoke(IPC_CHANNELS.OPEN_WINDOW, url)
 }
 
 // 创建并显示右键菜单
@@ -158,7 +170,7 @@ export const getVersion = () => require('../../../package.json').version || '0.0
 export const getName = () => require('../../../package.json').name || 'updrive'
 
 // 监听 Ctrl + A
-export const listenSelectAll = (callback) => ipcRenderer.on('SHORTCUT_SELECT_ALL', callback)
+export const listenSelectAll = (callback) => ipcRenderer.on(IPC_CHANNELS.SHORTCUT_SELECT_ALL, callback)
 
 // 上传文件
 export const uploadFileDialog = (option = {}) => {

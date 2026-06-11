@@ -5,16 +5,41 @@ process.env.BABEL_ENV = 'main'
 const path = require('path')
 const { dependencies } = require('../package.json')
 const webpack = require('webpack')
+const TerserPlugin = require('terser-webpack-plugin')
 
-const BabiliWebpackPlugin = require('babili-webpack-plugin')
+const isProd = process.env.NODE_ENV === 'production'
+
+const dependencyNames = Object.keys(dependencies || {})
+const devExternals = [
+  'electron-debug',
+  'electron-devtools-installer'
+]
+
+function createMainExternals () {
+  const externalNames = [...dependencyNames, ...(!isProd ? devExternals : [])]
+
+  return [
+    ({ request }, callback) => {
+      if (!request) {
+        return callback()
+      }
+
+      if (externalNames.some((dep) => request === dep || request.startsWith(`${dep}/`))) {
+        return callback(null, `commonjs ${request}`)
+      }
+
+      callback()
+    }
+  ]
+}
 
 let mainConfig = {
+  mode: isProd ? 'production' : 'development',
+  devtool: isProd ? false : 'source-map',
   entry: {
     main: path.join(__dirname, '../src/main/index.js')
   },
-  externals: [
-    ...Object.keys(dependencies || {})
-  ],
+  externals: createMainExternals(),
   module: {
     rules: [
       {
@@ -28,28 +53,24 @@ let mainConfig = {
       }
     ]
   },
-  node: {
-    __dirname: process.env.NODE_ENV !== 'production',
-    __filename: process.env.NODE_ENV !== 'production'
-  },
   output: {
     filename: '[name].js',
-    libraryTarget: 'commonjs2',
+    library: {
+      type: 'commonjs2'
+    },
     path: path.join(__dirname, '../dist/electron')
   },
-  plugins: [
-    new webpack.NoEmitOnErrorsPlugin()
-  ],
+  plugins: [],
   resolve: {
     extensions: ['.js', '.json', '.node']
   },
-  target: 'electron-main'
+  target: 'electron-main',
+  performance: {
+    hints: false
+  }
 }
 
-/**
- * Adjust mainConfig for development settings
- */
-if (process.env.NODE_ENV !== 'production') {
+if (!isProd) {
   mainConfig.plugins.push(
     new webpack.DefinePlugin({
       '__static': `"${path.join(__dirname, '../static').replace(/\\/g, '\\\\')}"`
@@ -57,16 +78,16 @@ if (process.env.NODE_ENV !== 'production') {
   )
 }
 
-/**
- * Adjust mainConfig for production settings
- */
-if (process.env.NODE_ENV === 'production') {
+if (isProd) {
   mainConfig.plugins.push(
-    new BabiliWebpackPlugin(),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': '"production"'
     })
   )
+  mainConfig.optimization = {
+    minimize: true,
+    minimizer: [new TerserPlugin()]
+  }
 }
 
 module.exports = mainConfig
