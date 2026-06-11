@@ -1,15 +1,38 @@
-export default {
-  createThumbnail(originalUrl, targetWidth) {
+import fs from 'fs'
+import mime from 'mime'
 
+function revokeObjectUrlIfNeeded (url) {
+  if (url && url.startsWith('blob:')) {
+    URL.revokeObjectURL(url)
+  }
+}
+
+export default {
+  createThumbnailFromFile (filePath, targetWidth) {
+    return new Promise((resolve, reject) => {
+      fs.readFile(filePath, (err, buffer) => {
+        if (err) {
+          reject(err)
+          return
+        }
+
+        const type = mime.getType(filePath) || 'application/octet-stream'
+        const blobUrl = URL.createObjectURL(new Blob([buffer], { type }))
+        this.createThumbnail(blobUrl, targetWidth).then(resolve).catch(reject)
+      })
+    })
+  },
+
+  createThumbnail (originalUrl, targetWidth) {
     const onload = new Promise((resolve, reject) => {
       const image = new Image()
       image.src = originalUrl
       image.onload = () => {
-        URL.revokeObjectURL(originalUrl)
+        revokeObjectUrlIfNeeded(originalUrl)
         resolve(image)
       }
       image.onerror = () => {
-        URL.revokeObjectURL(originalUrl)
+        revokeObjectUrlIfNeeded(originalUrl)
         reject(new Error('Could not create thumbnail'))
       }
     })

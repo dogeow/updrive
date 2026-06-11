@@ -61,14 +61,18 @@ export default {
       }
     },
     loadImg() {
-      thumnail.createThumbnail(`file://${this.url}`, 24).then(objectUrl => {
-        if (objectUrl) {
-          this.thumnailUrl = objectUrl
-          this.isLoadedImage = true
-        } else {
+      thumnail.createThumbnailFromFile(this.url, 24)
+        .then(objectUrl => {
+          if (objectUrl) {
+            this.thumnailUrl = objectUrl
+            this.isLoadedImage = true
+          } else {
+            this.isLoadedImage = false
+          }
+        })
+        .catch(() => {
           this.isLoadedImage = false
-        }
-      })
+        })
     },
     watchUrl() {
       this.isLoadedImage = false
