@@ -1,6 +1,6 @@
 .DS_Store
-dist/electron/*
-dist/web/*
+dist/
+release/
 build/*
 !build/icons
 node_modules/

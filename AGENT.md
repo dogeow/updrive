@@ -1,24 +1,6 @@
-# AGENT.md
+# updrive Agent Notes
 
-## 目录结构
-
-- `src/main/` Electron 主进程
-- `src/renderer/` Vue 渲染层
-- `src/renderer/views/list/` 文件列表主界面
-- `src/renderer/store/` Vuex 状态管理
-- `src/renderer/api/` 又拍云、FTP、Electron 封装
-
-## 技术栈
-
-- Electron
-- Vue 3 compat
-- Vuex
-- Vue Router
-- Webpack
-
-## 常用命令
-
-```bash
-yarn dev
-yarn build
-```
+- Stack: Electron + Vite + React 19 + Zustand + Tailwind 4
+- Upyun API runs in **main process** (`src/main/upyun/session.ts`), renderer talks via preload IPC
+- Legacy Vue 2 app lives under `legacy/` (do not restore as default)
+- Sibling references: `simple-diff` (scaffold), `upyun-web` (API patterns)
